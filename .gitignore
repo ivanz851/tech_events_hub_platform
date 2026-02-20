@@ -114,3 +114,6 @@ venv
 
 # Telegram sessions files
 *.session
+
+# macOS
+.DS_Store
