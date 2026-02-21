@@ -3,7 +3,6 @@ name = "tech_events_hub_platform"
 version = "0.1.0"
 description = ""
 package-mode = false
-readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -68,7 +67,7 @@ lint.ignore = [
 [tool.ruff.lint.isort]
 no-lines-before = ["standard-library", "local-folder"]
 known-third-party = []
-known-local-folder = ["src"]
+known-local-folder = ["whole_app"]
 
 [tool.ruff.lint.pylint]
 max-args = 8

@@ -28,11 +28,3 @@ lint: ## Run linters in check mode
 .PHONY: test
 test: ## Runs pytest with coverage
 	$(TEST) tests/ --cov=src --cov-report json --cov-report term --cov-report xml:cobertura.xml
-
-.PHONY: sync
-sync:
-	git push --progress --porcelain task-1 refs/heads/master:master -f
-	git push --progress --porcelain task-2 refs/heads/master:master -f
-	git push --progress --porcelain task-3 refs/heads/master:master -f
-	git push --progress --porcelain task-4 refs/heads/master:master -f
-	git push --progress --porcelain task-5 refs/heads/master:master -f
