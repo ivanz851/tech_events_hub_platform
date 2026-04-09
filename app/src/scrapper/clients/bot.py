@@ -1,4 +1,5 @@
 import logging
+from http import HTTPStatus
 
 import httpx
 
@@ -32,7 +33,7 @@ class BotClient:
         }
         async with httpx.AsyncClient(base_url=self._base_url) as client:
             resp = await client.post("/updates", json=payload)
-            if resp.status_code != 200:
+            if resp.status_code != HTTPStatus.OK:
                 raise BotClientError(resp.status_code, resp.text)
         logger.info(
             "Sent update to bot",

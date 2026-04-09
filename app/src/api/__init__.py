@@ -1,7 +1,6 @@
 from fastapi import APIRouter
 
-from . import ping
-from . import updates
+from . import ping, updates
 
 __all__ = ("router",)
 

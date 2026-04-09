@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from http import HTTPStatus
 
 import httpx
 
@@ -33,21 +34,21 @@ class ScrapperClient:
     async def register_chat(self, chat_id: int) -> None:
         async with httpx.AsyncClient(base_url=self._base_url) as client:
             resp = await client.post(f"/tg-chat/{chat_id}")
-            if resp.status_code not in (200, 409):
+            if resp.status_code not in (HTTPStatus.OK, HTTPStatus.CONFLICT):
                 raise ScrapperClientError(resp.status_code, resp.text)
         logger.info("Registered chat", extra={"chat_id": chat_id})
 
     async def delete_chat(self, chat_id: int) -> None:
         async with httpx.AsyncClient(base_url=self._base_url) as client:
             resp = await client.delete(f"/tg-chat/{chat_id}")
-            if resp.status_code not in (200, 404):
+            if resp.status_code not in (HTTPStatus.OK, HTTPStatus.NOT_FOUND):
                 raise ScrapperClientError(resp.status_code, resp.text)
         logger.info("Deleted chat", extra={"chat_id": chat_id})
 
     async def get_links(self, chat_id: int) -> list[LinkResponse]:
         async with httpx.AsyncClient(base_url=self._base_url) as client:
             resp = await client.get("/links", headers={"Tg-Chat-Id": str(chat_id)})
-            if resp.status_code != 200:
+            if resp.status_code != HTTPStatus.OK:
                 raise ScrapperClientError(resp.status_code, resp.text)
             data = resp.json()
         return [
@@ -73,9 +74,9 @@ class ScrapperClient:
                 headers={"Tg-Chat-Id": str(chat_id)},
                 json={"link": link, "tags": tags, "filters": filters},
             )
-            if resp.status_code == 409:
-                raise LinkAlreadyTrackedError(409, "Link already tracked")
-            if resp.status_code != 200:
+            if resp.status_code == HTTPStatus.CONFLICT:
+                raise LinkAlreadyTrackedError(HTTPStatus.CONFLICT, "Link already tracked")
+            if resp.status_code != HTTPStatus.OK:
                 raise ScrapperClientError(resp.status_code, resp.text)
             data = resp.json()
         logger.info("Added link", extra={"chat_id": chat_id, "url": link})
@@ -94,9 +95,9 @@ class ScrapperClient:
                 headers={"Tg-Chat-Id": str(chat_id)},
                 json={"link": link},
             )
-            if resp.status_code == 404:
-                raise ScrapperClientError(404, "Link not found")
-            if resp.status_code != 200:
+            if resp.status_code == HTTPStatus.NOT_FOUND:
+                raise ScrapperClientError(HTTPStatus.NOT_FOUND, "Link not found")
+            if resp.status_code != HTTPStatus.OK:
                 raise ScrapperClientError(resp.status_code, resp.text)
             data = resp.json()
         logger.info("Removed link", extra={"chat_id": chat_id, "url": link})

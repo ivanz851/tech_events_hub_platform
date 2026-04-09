@@ -1,7 +1,7 @@
 import asyncio
 import os
 from collections.abc import Generator
-from unittest.mock import AsyncMock, MagicMock, Mock
+from unittest.mock import MagicMock, Mock
 
 os.environ.setdefault("BOT_API_ID", "123456")
 os.environ.setdefault("BOT_API_HASH", "test")
@@ -14,12 +14,9 @@ from telethon import TelegramClient
 from telethon.events import NewMessage
 
 from src.api import router
-from src.clients.scrapper import ScrapperClient
-from src.scrapper.repository.storage import InMemoryStorage
-from src.scrapper.server import default_lifespan as scrapper_lifespan
 from src.scrapper.api import router as scrapper_router
+from src.scrapper.repository.storage import InMemoryStorage
 from src.server import default_lifespan
-from src.state.track import TrackStateStore
 
 
 @pytest.fixture(scope="session")
@@ -32,6 +29,7 @@ def mock_event() -> Mock:
     return event
 
 
+"""
 @pytest.fixture
 def mock_tg_event() -> Mock:
     event = AsyncMock(spec=NewMessage.Event)
@@ -39,16 +37,21 @@ def mock_tg_event() -> Mock:
     event.raw_text = ""
     event.respond = AsyncMock()
     return event
+"""
 
 
+"""
 @pytest.fixture
 def scrapper_client_mock() -> Mock:
     return AsyncMock(spec=ScrapperClient)
+"""
 
 
+"""
 @pytest.fixture
 def state_store() -> TrackStateStore:
     return TrackStateStore()
+"""
 
 
 @pytest.fixture(scope="session")

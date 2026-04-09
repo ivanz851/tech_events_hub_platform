@@ -47,11 +47,11 @@ async def test_scheduler_notifies_only_subscribed_users(
 
     scrapper = _make_scrapper([_make_message(100)])
     scheduler = Scheduler(storage, bot_client, scrapper, interval_seconds=9999)
-    await scheduler._check_and_notify()
+    await scheduler._check_and_notify()  # noqa: SLF001
     bot_client.send_update.assert_not_called()
 
     scrapper.get_new_messages = AsyncMock(return_value=[_make_message(101)])
-    await scheduler._check_and_notify()
+    await scheduler._check_and_notify()  # noqa: SLF001
 
     calls = bot_client.send_update.call_args_list
     sent_map: dict[str, set[int]] = {}
@@ -74,9 +74,9 @@ async def test_scheduler_no_new_messages_no_notification(
     scrapper = _make_scrapper([_make_message(10)])
     scheduler = Scheduler(storage, bot_client, scrapper, interval_seconds=9999)
 
-    await scheduler._check_and_notify()
+    await scheduler._check_and_notify()  # noqa: SLF001
     scrapper.get_new_messages = AsyncMock(return_value=[])
-    await scheduler._check_and_notify()
+    await scheduler._check_and_notify()  # noqa: SLF001
 
     bot_client.send_update.assert_not_called()
 
@@ -89,7 +89,7 @@ async def test_scheduler_no_tracked_links_no_notifications(
     scrapper = _make_scrapper()
     scheduler = Scheduler(storage, bot_client, scrapper, interval_seconds=9999)
 
-    await scheduler._check_and_notify()
+    await scheduler._check_and_notify()  # noqa: SLF001
     bot_client.send_update.assert_not_called()
 
 
@@ -103,10 +103,10 @@ async def test_scheduler_bot_error_does_not_crash(
 
     scrapper = _make_scrapper([_make_message(10)])
     scheduler = Scheduler(storage, bot_client, scrapper, interval_seconds=9999)
-    await scheduler._check_and_notify()
+    await scheduler._check_and_notify()  # noqa: SLF001
 
     scrapper.get_new_messages = AsyncMock(return_value=[_make_message(11)])
-    await scheduler._check_and_notify()
+    await scheduler._check_and_notify()  # noqa: SLF001
 
 
 @pytest.mark.asyncio
@@ -120,11 +120,11 @@ async def test_scheduler_does_not_notify_same_message_twice(
     scrapper = _make_scrapper([_make_message(10)])
     scheduler = Scheduler(storage, bot_client, scrapper, interval_seconds=9999)
 
-    await scheduler._check_and_notify()
+    await scheduler._check_and_notify()  # noqa: SLF001
 
     scrapper.get_new_messages = AsyncMock(return_value=[_make_message(11)])
-    await scheduler._check_and_notify()
+    await scheduler._check_and_notify()  # noqa: SLF001
     assert bot_client.send_update.call_count == 1
 
-    await scheduler._check_and_notify()
+    await scheduler._check_and_notify()  # noqa: SLF001
     assert bot_client.send_update.call_count == 1

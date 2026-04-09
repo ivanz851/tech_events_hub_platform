@@ -1,4 +1,5 @@
-from unittest.mock import AsyncMock, MagicMock
+from http import HTTPStatus
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
@@ -30,13 +31,13 @@ def test_updates_valid_payload(client_with_tg: TestClient) -> None:
         "tgChatIds": [111, 222],
     }
     resp = client_with_tg.post("/api/v1/updates", json=payload)
-    assert resp.status_code == 200
+    assert resp.status_code == HTTPStatus.OK
     assert resp.json()["status"] == "ok"
 
 
 def test_updates_invalid_payload_returns_422(test_client: TestClient) -> None:
     resp = test_client.post("/api/v1/updates", json={"id": "not-int"})
-    assert resp.status_code == 422
+    assert resp.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 def test_updates_empty_chat_ids(client_with_tg: TestClient) -> None:
@@ -47,4 +48,4 @@ def test_updates_empty_chat_ids(client_with_tg: TestClient) -> None:
         "tgChatIds": [],
     }
     resp = client_with_tg.post("/api/v1/updates", json=payload)
-    assert resp.status_code == 200
+    assert resp.status_code == HTTPStatus.OK

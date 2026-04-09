@@ -30,7 +30,7 @@ def make_track_command_handler(state_store: TrackStateStore) -> events.NewMessag
         text: str = event.raw_text.strip()
         parts = text.split(maxsplit=1)
 
-        if len(parts) == 2 and _is_valid_url(parts[1]):
+        if len(parts) == 2 and _is_valid_url(parts[1]):  # noqa: PLR2004
             state_store.set(chat_id, TrackState(step=TrackStep.WAITING_FOR_FILTERS, url=parts[1]))
             await event.respond(_MSG_ENTER_FILTERS)
         else:
@@ -93,5 +93,5 @@ async def _handle_filters_input(
     except LinkAlreadyTrackedError:
         await event.respond(_MSG_ALREADY_TRACKED)
     except ScrapperClientError as exc:
-        logger.error("Failed to add link", extra={"chat_id": chat_id, "error": str(exc)})
+        logger.exception("Failed to add link", extra={"chat_id": chat_id, "error": str(exc)})
         await event.respond("Произошла ошибка при добавлении ссылки.")
