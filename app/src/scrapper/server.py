@@ -34,7 +34,7 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
     )
     logger.info(
         "Starting Telegram user session for scrapper. "
-        "If prompted, enter your phone number and the code from Telegram."
+        "If prompted, enter your phone number and the code from Telegram.",
     )
     await tg_client.start()
 

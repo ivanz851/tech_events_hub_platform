@@ -74,7 +74,7 @@ class Scheduler:
             )
             logger.info("Notification sent", extra={"url": url, "recipients": len(chat_ids)})
         except BotClientError as exc:
-            logger.error(
+            logger.exception(
                 "Failed to notify bot",
                 extra={"url": url, "error": str(exc)},
             )

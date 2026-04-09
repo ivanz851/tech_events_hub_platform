@@ -11,7 +11,7 @@ pydantic-settings = "^2.7.1"
 fastapi = "^0.115.8"
 uvicorn = "^0.34.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 black = "^24.8.0"
 isort = "^5.13.2"
 ruff = "^0.6.1"
@@ -99,3 +99,6 @@ strict_equality = true
 module = ["tests.*"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"

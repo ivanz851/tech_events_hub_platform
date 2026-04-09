@@ -23,11 +23,11 @@ def scrapper() -> AsyncMock:
 async def test_untrack_happy_path(mock_event: AsyncMock, scrapper: AsyncMock) -> None:
     mock_event.raw_text = "/untrack https://t.me/ch"
     scrapper.remove_link = AsyncMock(
-        return_value=LinkResponse(id=1, url="https://t.me/ch", tags=[], filters=[])
+        return_value=LinkResponse(id=1, url="https://t.me/ch", tags=[], filters=[]),
     )
     handler = make_untrack_handler(scrapper)
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017, PT011
         await handler(mock_event)
 
     scrapper.remove_link.assert_called_once_with(100500, "https://t.me/ch")
@@ -40,7 +40,7 @@ async def test_untrack_no_url(mock_event: AsyncMock, scrapper: AsyncMock) -> Non
     mock_event.raw_text = "/untrack"
     handler = make_untrack_handler(scrapper)
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017, PT011
         await handler(mock_event)
 
     scrapper.remove_link.assert_not_called()
@@ -54,7 +54,7 @@ async def test_untrack_not_found(mock_event: AsyncMock, scrapper: AsyncMock) -> 
     scrapper.remove_link = AsyncMock(side_effect=ScrapperClientError(404, "not found"))
     handler = make_untrack_handler(scrapper)
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017, PT011
         await handler(mock_event)
 
     response_text: str = mock_event.respond.call_args[0][0]
@@ -67,7 +67,7 @@ async def test_untrack_scrapper_error(mock_event: AsyncMock, scrapper: AsyncMock
     scrapper.remove_link = AsyncMock(side_effect=ScrapperClientError(500, "server error"))
     handler = make_untrack_handler(scrapper)
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017, PT011
         await handler(mock_event)
 
     response_text: str = mock_event.respond.call_args[0][0]

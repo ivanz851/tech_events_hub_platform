@@ -7,12 +7,12 @@ class LinkUpdate(BaseModel):
     id: int
     url: str
     description: str
-    tgChatIds: list[int]
+    tgChatIds: list[int]  # noqa: N815
 
 
 class ApiErrorResponse(BaseModel):
     description: str
     code: str
-    exceptionName: str = ""
-    exceptionMessage: str = ""
+    exceptionName: str = ""  # noqa: N815
+    exceptionMessage: str = ""  # noqa: N815
     stacktrace: list[str] = []

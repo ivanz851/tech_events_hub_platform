@@ -24,8 +24,8 @@ async def updates_handler(request: Request, update: LinkUpdate) -> dict[str, str
         try:
             await tg_client.send_message(chat_id, message)
             logger.info("Sent update notification", extra={"chat_id": chat_id, "url": update.url})
-        except Exception as exc:  # noqa: BLE001
-            logger.error(
+        except Exception as exc:  # noqa: PERF203
+            logger.exception(
                 "Failed to send notification",
                 extra={"chat_id": chat_id, "error": str(exc)},
             )

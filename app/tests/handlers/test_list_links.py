@@ -24,7 +24,7 @@ async def test_list_empty(mock_event: AsyncMock, scrapper: AsyncMock) -> None:
     scrapper.get_links = AsyncMock(return_value=[])
     handler = make_list_handler(scrapper)
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017, PT011
         await handler(mock_event)
 
     response_text: str = mock_event.respond.call_args[0][0]
@@ -33,13 +33,15 @@ async def test_list_empty(mock_event: AsyncMock, scrapper: AsyncMock) -> None:
 
 @pytest.mark.asyncio
 async def test_list_with_links(mock_event: AsyncMock, scrapper: AsyncMock) -> None:
-    scrapper.get_links = AsyncMock(return_value=[
-        LinkResponse(id=1, url="https://t.me/ch1", tags=["python"], filters=[]),
-        LinkResponse(id=2, url="https://t.me/ch2", tags=[], filters=[]),
-    ])
+    scrapper.get_links = AsyncMock(
+        return_value=[
+            LinkResponse(id=1, url="https://t.me/ch1", tags=["python"], filters=[]),
+            LinkResponse(id=2, url="https://t.me/ch2", tags=[], filters=[]),
+        ],
+    )
     handler = make_list_handler(scrapper)
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017, PT011
         await handler(mock_event)
 
     response_text: str = mock_event.respond.call_args[0][0]
@@ -54,7 +56,7 @@ async def test_list_scrapper_error(mock_event: AsyncMock, scrapper: AsyncMock) -
     scrapper.get_links = AsyncMock(side_effect=ScrapperClientError(500, "error"))
     handler = make_list_handler(scrapper)
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017, PT011
         await handler(mock_event)
 
     response_text: str = mock_event.respond.call_args[0][0]
