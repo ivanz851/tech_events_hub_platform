@@ -115,5 +115,14 @@ venv
 # Telegram sessions files
 *.session
 
-# macOS
-.DS_Store
+# Development process drafts
+*.md
+
+
+# Debug scripts
+debug_check.py
+debug_full.py
+
+# Junk
+.*/
+!.github/

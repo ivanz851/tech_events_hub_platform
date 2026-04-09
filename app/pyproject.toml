@@ -23,6 +23,7 @@ pytest-mock = "*"
 pytest-repeat = "*"
 pytest-asyncio = "*"
 httpx = "^0.28.1"
+respx = "^0.21.1"
 
 [build-system]
 requires = ["poetry-core"]
