@@ -1,7 +1,7 @@
+from http import HTTPStatus
+
 import pytest
 from fastapi.testclient import TestClient
-
-from src.scrapper.repository.storage import InMemoryStorage
 
 
 @pytest.fixture
@@ -11,24 +11,27 @@ def chat_id() -> int:
 
 def test_register_chat(scrapper_test_client: TestClient, chat_id: int) -> None:
     resp = scrapper_test_client.post(f"/tg-chat/{chat_id}")
-    assert resp.status_code == 200
+    assert resp.status_code == HTTPStatus.OK
 
 
-def test_register_chat_duplicate_returns_409(scrapper_test_client: TestClient, chat_id: int) -> None:
+def test_register_chat_duplicate_returns_409(
+    scrapper_test_client: TestClient,
+    chat_id: int,
+) -> None:
     scrapper_test_client.post(f"/tg-chat/{chat_id}")
     resp = scrapper_test_client.post(f"/tg-chat/{chat_id}")
-    assert resp.status_code == 409
+    assert resp.status_code == HTTPStatus.CONFLICT
 
 
 def test_delete_chat(scrapper_test_client: TestClient, chat_id: int) -> None:
     scrapper_test_client.post(f"/tg-chat/{chat_id}")
     resp = scrapper_test_client.delete(f"/tg-chat/{chat_id}")
-    assert resp.status_code == 200
+    assert resp.status_code == HTTPStatus.OK
 
 
 def test_delete_nonexistent_chat_returns_404(scrapper_test_client: TestClient) -> None:
     resp = scrapper_test_client.delete("/tg-chat/9999")
-    assert resp.status_code == 404
+    assert resp.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_add_link(scrapper_test_client: TestClient, chat_id: int) -> None:
@@ -38,7 +41,7 @@ def test_add_link(scrapper_test_client: TestClient, chat_id: int) -> None:
         headers={"Tg-Chat-Id": str(chat_id)},
         json={"link": "https://t.me/ch", "tags": ["py"], "filters": []},
     )
-    assert resp.status_code == 200
+    assert resp.status_code == HTTPStatus.OK
     data = resp.json()
     assert data["url"] == "https://t.me/ch"
     assert data["tags"] == ["py"]
@@ -56,7 +59,7 @@ def test_add_link_duplicate_returns_409(scrapper_test_client: TestClient, chat_i
         headers={"Tg-Chat-Id": str(chat_id)},
         json={"link": "https://t.me/ch", "tags": [], "filters": []},
     )
-    assert resp.status_code == 409
+    assert resp.status_code == HTTPStatus.CONFLICT
 
 
 def test_add_link_unknown_chat_returns_404(scrapper_test_client: TestClient) -> None:
@@ -65,7 +68,7 @@ def test_add_link_unknown_chat_returns_404(scrapper_test_client: TestClient) -> 
         headers={"Tg-Chat-Id": "9999"},
         json={"link": "https://t.me/ch", "tags": [], "filters": []},
     )
-    assert resp.status_code == 404
+    assert resp.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_get_links(scrapper_test_client: TestClient, chat_id: int) -> None:
@@ -81,7 +84,7 @@ def test_get_links(scrapper_test_client: TestClient, chat_id: int) -> None:
         json={"link": "https://t.me/ch2", "tags": ["py"], "filters": []},
     )
     resp = scrapper_test_client.get("/links", headers={"Tg-Chat-Id": str(chat_id)})
-    assert resp.status_code == 200
+    assert resp.status_code == HTTPStatus.OK
     data = resp.json()
     assert data["size"] == 2
 
@@ -99,12 +102,15 @@ def test_remove_link(scrapper_test_client: TestClient, chat_id: int) -> None:
         headers={"Tg-Chat-Id": str(chat_id)},
         json={"link": "https://t.me/ch"},
     )
-    assert resp.status_code == 200
+    assert resp.status_code == HTTPStatus.OK
     data = resp.json()
     assert data["url"] == "https://t.me/ch"
 
 
-def test_remove_nonexistent_link_returns_404(scrapper_test_client: TestClient, chat_id: int) -> None:
+def test_remove_nonexistent_link_returns_404(
+    scrapper_test_client: TestClient,
+    chat_id: int,
+) -> None:
     scrapper_test_client.post(f"/tg-chat/{chat_id}")
     resp = scrapper_test_client.request(
         "DELETE",
@@ -112,4 +118,4 @@ def test_remove_nonexistent_link_returns_404(scrapper_test_client: TestClient, c
         headers={"Tg-Chat-Id": str(chat_id)},
         json={"link": "https://t.me/nope"},
     )
-    assert resp.status_code == 404
+    assert resp.status_code == HTTPStatus.NOT_FOUND

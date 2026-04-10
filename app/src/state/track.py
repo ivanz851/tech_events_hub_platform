@@ -7,6 +7,7 @@ __all__ = ("TrackStep", "TrackState", "TrackStateStore")
 class TrackStep(Enum):
     WAITING_FOR_URL = "waiting_for_url"
     WAITING_FOR_FILTERS = "waiting_for_filters"
+    WAITING_FOR_UNTRACK_URL = "waiting_for_untrack_url"
 
 
 @dataclass

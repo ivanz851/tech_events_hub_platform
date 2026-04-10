@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 __all__ = (
     "AddLinkRequest",
@@ -12,8 +12,8 @@ __all__ = (
 class ApiErrorResponse(BaseModel):
     description: str
     code: str
-    exceptionName: str = ""
-    exceptionMessage: str = ""
+    exception_name: str = Field(default="", alias="exceptionName")
+    exception_message: str = Field(default="", alias="exceptionMessage")
     stacktrace: list[str] = []
 
 

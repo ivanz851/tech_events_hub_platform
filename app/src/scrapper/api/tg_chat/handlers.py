@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 
 from src.scrapper.api.schemas import ApiErrorResponse
-from src.scrapper.repository.storage import InMemoryStorage
+from src.scrapper.repository.abstract import AbstractLinkRepository
 
 __all__ = ("router",)
 
@@ -12,15 +12,15 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _get_storage(request: Request) -> InMemoryStorage:
-    storage: InMemoryStorage = request.app.state.storage
-    return storage
+def _get_repository(request: Request) -> AbstractLinkRepository:
+    repository: AbstractLinkRepository = request.app.state.repository
+    return repository
 
 
 @router.post("/tg-chat/{chat_id}", status_code=status.HTTP_200_OK)
 async def register_chat(chat_id: int, request: Request) -> JSONResponse:
-    storage = _get_storage(request)
-    registered = storage.register_chat(chat_id)
+    repository = _get_repository(request)
+    registered = await repository.register_chat(chat_id)
     if not registered:
         error = ApiErrorResponse(
             description="Chat already exists",
@@ -35,8 +35,8 @@ async def register_chat(chat_id: int, request: Request) -> JSONResponse:
 
 @router.delete("/tg-chat/{chat_id}", status_code=status.HTTP_200_OK)
 async def delete_chat(chat_id: int, request: Request) -> JSONResponse:
-    storage = _get_storage(request)
-    deleted = storage.delete_chat(chat_id)
+    repository = _get_repository(request)
+    deleted = await repository.delete_chat(chat_id)
     if not deleted:
         error = ApiErrorResponse(
             description="Chat not found",

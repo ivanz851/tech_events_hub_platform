@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from telethon import events
 
 from src.clients.scrapper import LinkAlreadyTrackedError, ScrapperClient, ScrapperClientError
+from src.handlers.untrack import _do_untrack
 from src.state.track import TrackState, TrackStateStore, TrackStep
 
 __all__ = ("make_track_command_handler", "make_track_message_handler")
@@ -30,7 +31,7 @@ def make_track_command_handler(state_store: TrackStateStore) -> events.NewMessag
         text: str = event.raw_text.strip()
         parts = text.split(maxsplit=1)
 
-        if len(parts) == 2 and _is_valid_url(parts[1]):
+        if len(parts) == 2 and _is_valid_url(parts[1]):  # noqa: PLR2004
             state_store.set(chat_id, TrackState(step=TrackStep.WAITING_FOR_FILTERS, url=parts[1]))
             await event.respond(_MSG_ENTER_FILTERS)
         else:
@@ -59,6 +60,8 @@ def make_track_message_handler(
             await _handle_url_input(event, chat_id, text, state_store)
         elif state.step == TrackStep.WAITING_FOR_FILTERS:
             await _handle_filters_input(event, chat_id, text, state, state_store, scrapper)
+        elif state.step == TrackStep.WAITING_FOR_UNTRACK_URL:
+            await _do_untrack(event, chat_id, text, scrapper, state_store)
 
     return track_message_handler  # type: ignore[return-value]
 
@@ -93,5 +96,5 @@ async def _handle_filters_input(
     except LinkAlreadyTrackedError:
         await event.respond(_MSG_ALREADY_TRACKED)
     except ScrapperClientError as exc:
-        logger.error("Failed to add link", extra={"chat_id": chat_id, "error": str(exc)})
+        logger.exception("Failed to add link", extra={"chat_id": chat_id, "error": str(exc)})
         await event.respond("Произошла ошибка при добавлении ссылки.")

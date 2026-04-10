@@ -20,12 +20,12 @@ async def updates_handler(request: Request, update: LinkUpdate) -> dict[str, str
         return {"status": "ok"}
 
     message = _format_update_message(update)
-    for chat_id in update.tgChatIds:
+    for chat_id in update.tg_chat_ids:
         try:
             await tg_client.send_message(chat_id, message)
             logger.info("Sent update notification", extra={"chat_id": chat_id, "url": update.url})
-        except Exception as exc:  # noqa: BLE001
-            logger.error(
+        except Exception as exc:  # noqa: PERF203
+            logger.exception(
                 "Failed to send notification",
                 extra={"chat_id": chat_id, "error": str(exc)},
             )
@@ -35,7 +35,7 @@ async def updates_handler(request: Request, update: LinkUpdate) -> dict[str, str
 
 @router.post("/updates/validate")
 async def validate_update(update: LinkUpdate) -> JSONResponse:
-    if not update.url or not update.tgChatIds:
+    if not update.url or not update.tg_chat_ids:
         error = ApiErrorResponse(
             description="Invalid update payload",
             code="400",

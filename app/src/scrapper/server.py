@@ -10,13 +10,29 @@ from telethon import TelegramClient
 
 from src.scrapper.api import router
 from src.scrapper.clients.bot import BotClient
-from src.scrapper.repository.storage import InMemoryStorage
+from src.scrapper.db.engine import create_engine, create_session_factory
+from src.scrapper.notification.http import HttpNotificationService
+from src.scrapper.repository.abstract import AbstractLinkRepository
+from src.scrapper.repository.orm_repository import OrmLinkRepository
+from src.scrapper.repository.sql_repository import SqlLinkRepository
 from src.scrapper.scheduler import Scheduler
-from src.scrapper.settings import ScrapperSettings
+from src.scrapper.settings import AccessType, ScrapperSettings
 from src.scrapper.telegram_scrapper import TelegramChannelScrapper
 from src.settings import TGBotSettings
 
 logger = logging.getLogger(__name__)
+
+
+def _build_repository(settings: ScrapperSettings) -> AbstractLinkRepository:
+    if settings.access_type == AccessType.ORM:
+        engine = create_engine(settings.db_url)
+        session_factory = create_session_factory(engine)
+        return OrmLinkRepository(session_factory)
+    dsn = settings.db_url.replace("postgresql+psycopg://", "postgresql://").replace(
+        "postgresql+asyncpg://",
+        "postgresql://",
+    )
+    return SqlLinkRepository(dsn)
 
 
 @asynccontextmanager
@@ -24,8 +40,9 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
     scrapper_settings = ScrapperSettings()  # type: ignore[call-arg]
     bot_settings = TGBotSettings()  # type: ignore[call-arg]
 
-    storage = InMemoryStorage()
+    repository = _build_repository(scrapper_settings)
     bot_client = BotClient(base_url=scrapper_settings.bot_base_url)
+    notification = HttpNotificationService(bot_client)
 
     tg_client = TelegramClient(
         "scrapper_session",
@@ -34,19 +51,21 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
     )
     logger.info(
         "Starting Telegram user session for scrapper. "
-        "If prompted, enter your phone number and the code from Telegram."
+        "If prompted, enter your phone number and the code from Telegram.",
     )
     await tg_client.start()
 
     tg_scrapper = TelegramChannelScrapper(tg_client)
     scheduler = Scheduler(
-        storage,
-        bot_client,
-        tg_scrapper,
-        scrapper_settings.scheduler_interval_seconds,
+        repository=repository,
+        notification=notification,
+        tg_scrapper=tg_scrapper,
+        interval_seconds=scrapper_settings.scheduler_interval_seconds,
+        batch_size=scrapper_settings.batch_size,
+        worker_count=scrapper_settings.worker_count,
     )
 
-    application.state.storage = storage
+    application.state.repository = repository
 
     task = asyncio.create_task(scheduler.run())
     logger.info("Scrapper started")

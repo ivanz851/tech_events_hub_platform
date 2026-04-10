@@ -33,10 +33,12 @@ async def test_list_empty(mock_event: AsyncMock, scrapper: AsyncMock) -> None:
 
 @pytest.mark.asyncio
 async def test_list_with_links(mock_event: AsyncMock, scrapper: AsyncMock) -> None:
-    scrapper.get_links = AsyncMock(return_value=[
-        LinkResponse(id=1, url="https://t.me/ch1", tags=["python"], filters=[]),
-        LinkResponse(id=2, url="https://t.me/ch2", tags=[], filters=[]),
-    ])
+    scrapper.get_links = AsyncMock(
+        return_value=[
+            LinkResponse(id=1, url="https://t.me/ch1", tags=["python"], filters=[]),
+            LinkResponse(id=2, url="https://t.me/ch2", tags=[], filters=[]),
+        ],
+    )
     handler = make_list_handler(scrapper)
 
     with pytest.raises(Exception):

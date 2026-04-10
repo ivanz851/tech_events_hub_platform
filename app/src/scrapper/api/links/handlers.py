@@ -10,7 +10,7 @@ from src.scrapper.api.schemas import (
     ListLinksResponse,
     RemoveLinkRequest,
 )
-from src.scrapper.repository.storage import InMemoryStorage
+from src.scrapper.repository.abstract import AbstractLinkRepository
 
 __all__ = ("router",)
 
@@ -18,9 +18,9 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _get_storage(request: Request) -> InMemoryStorage:
-    storage: InMemoryStorage = request.app.state.storage
-    return storage
+def _get_repository(request: Request) -> AbstractLinkRepository:
+    repository: AbstractLinkRepository = request.app.state.repository
+    return repository
 
 
 @router.get("/links", response_model=ListLinksResponse)
@@ -28,8 +28,8 @@ async def get_links(
     request: Request,
     tg_chat_id: int = Header(alias="Tg-Chat-Id"),
 ) -> JSONResponse:
-    storage = _get_storage(request)
-    if not storage.chat_exists(tg_chat_id):
+    repository = _get_repository(request)
+    if not await repository.chat_exists(tg_chat_id):
         error = ApiErrorResponse(
             description="Chat not found",
             code="404",
@@ -38,7 +38,7 @@ async def get_links(
         )
         return JSONResponse(status_code=404, content=error.model_dump())
 
-    records = storage.get_links(tg_chat_id)
+    records = await repository.get_links(tg_chat_id)
     links = [LinkResponse(id=r.id, url=r.url, tags=r.tags, filters=r.filters) for r in records]
     response = ListLinksResponse(links=links, size=len(links))
     return JSONResponse(status_code=200, content=response.model_dump())
@@ -50,8 +50,8 @@ async def add_link(
     request: Request,
     tg_chat_id: int = Header(alias="Tg-Chat-Id"),
 ) -> JSONResponse:
-    storage = _get_storage(request)
-    if not storage.chat_exists(tg_chat_id):
+    repository = _get_repository(request)
+    if not await repository.chat_exists(tg_chat_id):
         error = ApiErrorResponse(
             description="Chat not found",
             code="404",
@@ -60,7 +60,7 @@ async def add_link(
         )
         return JSONResponse(status_code=404, content=error.model_dump())
 
-    record = storage.add_link(tg_chat_id, body.link, body.tags, body.filters)
+    record = await repository.add_link(tg_chat_id, body.link, body.tags, body.filters)
     if record is None:
         error = ApiErrorResponse(
             description="Link already tracked",
@@ -81,8 +81,8 @@ async def remove_link(
     request: Request,
     tg_chat_id: int = Header(alias="Tg-Chat-Id"),
 ) -> JSONResponse:
-    storage = _get_storage(request)
-    if not storage.chat_exists(tg_chat_id):
+    repository = _get_repository(request)
+    if not await repository.chat_exists(tg_chat_id):
         error = ApiErrorResponse(
             description="Chat not found",
             code="404",
@@ -91,7 +91,7 @@ async def remove_link(
         )
         return JSONResponse(status_code=404, content=error.model_dump())
 
-    record = storage.remove_link(tg_chat_id, body.link)
+    record = await repository.remove_link(tg_chat_id, body.link)
     if record is None:
         error = ApiErrorResponse(
             description="Link not found",

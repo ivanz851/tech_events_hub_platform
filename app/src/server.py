@@ -25,7 +25,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 @asynccontextmanager
-async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
+async def default_lifespan(_application: FastAPI) -> AsyncIterator[None]:
     logger.debug("Running application lifespan ...")
     loop = asyncio.get_event_loop()
     loop.set_default_executor(ThreadPoolExecutor(max_workers=4))

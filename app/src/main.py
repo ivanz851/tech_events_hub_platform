@@ -39,7 +39,7 @@ async def _register_commands(tg_client: TelegramClient) -> None:
                 BotCommand(command="untrack", description="Прекратить отслеживание"),
                 BotCommand(command="list", description="Список отслеживаемых ресурсов"),
             ],
-        )
+        ),
     )
     logger.info("Bot commands registered via setMyCommands")
 
@@ -66,7 +66,7 @@ def _register_handlers(
         events.NewMessage(pattern=r"^/track(\s|$)"),
     )
     client.add_event_handler(
-        make_untrack_handler(scrapper_client),
+        make_untrack_handler(scrapper_client, state_store),
         events.NewMessage(pattern=r"^/untrack(\s|$)"),
     )
     client.add_event_handler(
@@ -91,7 +91,7 @@ async def main() -> None:
     try:
         await client.start(bot_token=settings.token)
     except ApiIdInvalidError:
-        logger.error("Invalid Telegram API credentials")
+        logger.exception("Invalid Telegram API credentials")
         return
 
     app.tg_client = client  # type: ignore[attr-defined]

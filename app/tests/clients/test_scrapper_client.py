@@ -1,6 +1,8 @@
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import httpx
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.clients.scrapper import (
     LinkAlreadyTrackedError,
@@ -16,7 +18,11 @@ def client() -> ScrapperClient:
     return ScrapperClient(base_url=BASE_URL)
 
 
-def _make_http_mock(status_code: int, json_body: dict | None = None, text: str = "") -> AsyncMock:
+def _make_http_mock(
+    status_code: int,
+    json_body: dict[str, Any] | None = None,
+    text: str = "",
+) -> AsyncMock:
     """Helper: returns an AsyncClient mock whose methods return a given response."""
     response = MagicMock(spec=httpx.Response)
     response.status_code = status_code
@@ -52,15 +58,20 @@ async def test_register_chat_already_exists_no_error(client: ScrapperClient) -> 
 @pytest.mark.asyncio
 async def test_register_chat_server_error(client: ScrapperClient) -> None:
     mock_http = _make_http_mock(500, text="error")
-    with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
-        with pytest.raises(ScrapperClientError) as exc_info:
-            await client.register_chat(42)
+    with (
+        patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http),
+        pytest.raises(ScrapperClientError) as exc_info,
+    ):
+        await client.register_chat(42)
     assert exc_info.value.status_code == 500
 
 
 @pytest.mark.asyncio
 async def test_get_links_success(client: ScrapperClient) -> None:
-    body = {"links": [{"id": 1, "url": "https://t.me/ch", "tags": ["py"], "filters": []}], "size": 1}
+    body = {
+        "links": [{"id": 1, "url": "https://t.me/ch", "tags": ["py"], "filters": []}],
+        "size": 1,
+    }
     mock_http = _make_http_mock(200, json_body=body)
     with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
         links = await client.get_links(chat_id=1)
@@ -72,9 +83,11 @@ async def test_get_links_success(client: ScrapperClient) -> None:
 @pytest.mark.asyncio
 async def test_get_links_error(client: ScrapperClient) -> None:
     mock_http = _make_http_mock(404, text="not found")
-    with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
-        with pytest.raises(ScrapperClientError) as exc_info:
-            await client.get_links(chat_id=99)
+    with (
+        patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http),
+        pytest.raises(ScrapperClientError) as exc_info,
+    ):
+        await client.get_links(chat_id=99)
     assert exc_info.value.status_code == 404
 
 
@@ -91,17 +104,21 @@ async def test_add_link_success(client: ScrapperClient) -> None:
 @pytest.mark.asyncio
 async def test_add_link_duplicate(client: ScrapperClient) -> None:
     mock_http = _make_http_mock(409, text="conflict")
-    with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
-        with pytest.raises(LinkAlreadyTrackedError):
-            await client.add_link(1, "https://t.me/ch", tags=[], filters=[])
+    with (
+        patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http),
+        pytest.raises(LinkAlreadyTrackedError),
+    ):
+        await client.add_link(1, "https://t.me/ch", tags=[], filters=[])
 
 
 @pytest.mark.asyncio
 async def test_add_link_invalid_body(client: ScrapperClient) -> None:
     mock_http = _make_http_mock(400, text="bad request")
-    with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
-        with pytest.raises(ScrapperClientError) as exc_info:
-            await client.add_link(1, "bad", tags=[], filters=[])
+    with (
+        patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http),
+        pytest.raises(ScrapperClientError) as exc_info,
+    ):
+        await client.add_link(1, "bad", tags=[], filters=[])
     assert exc_info.value.status_code == 400
 
 
@@ -117,7 +134,61 @@ async def test_remove_link_success(client: ScrapperClient) -> None:
 @pytest.mark.asyncio
 async def test_remove_link_not_found(client: ScrapperClient) -> None:
     mock_http = _make_http_mock(404, text="not found")
-    with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
-        with pytest.raises(ScrapperClientError) as exc_info:
-            await client.remove_link(1, "https://t.me/nope")
+    with (
+        patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http),
+        pytest.raises(ScrapperClientError) as exc_info,
+    ):
+        await client.remove_link(1, "https://t.me/nope")
     assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_register_chat_connect_error(client: ScrapperClient) -> None:
+    with (
+        patch(
+            "src.clients.scrapper.httpx.AsyncClient",
+            side_effect=httpx.ConnectError("Connection refused"),
+        ),
+        pytest.raises(ScrapperClientError) as exc_info,
+    ):
+        await client.register_chat(42)
+    assert exc_info.value.status_code == 0
+
+
+@pytest.mark.asyncio
+async def test_get_links_connect_error(client: ScrapperClient) -> None:
+    with (
+        patch(
+            "src.clients.scrapper.httpx.AsyncClient",
+            side_effect=httpx.ConnectError("Connection refused"),
+        ),
+        pytest.raises(ScrapperClientError) as exc_info,
+    ):
+        await client.get_links(chat_id=1)
+    assert exc_info.value.status_code == 0
+
+
+@pytest.mark.asyncio
+async def test_add_link_connect_error(client: ScrapperClient) -> None:
+    with (
+        patch(
+            "src.clients.scrapper.httpx.AsyncClient",
+            side_effect=httpx.ConnectError("Connection refused"),
+        ),
+        pytest.raises(ScrapperClientError) as exc_info,
+    ):
+        await client.add_link(1, "https://t.me/ch", tags=[], filters=[])
+    assert exc_info.value.status_code == 0
+
+
+@pytest.mark.asyncio
+async def test_remove_link_connect_error(client: ScrapperClient) -> None:
+    with (
+        patch(
+            "src.clients.scrapper.httpx.AsyncClient",
+            side_effect=httpx.ConnectError("Connection refused"),
+        ),
+        pytest.raises(ScrapperClientError) as exc_info,
+    ):
+        await client.remove_link(1, "https://t.me/ch")
+    assert exc_info.value.status_code == 0

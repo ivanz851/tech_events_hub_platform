@@ -15,9 +15,9 @@ from telethon.events import NewMessage
 
 from src.api import router
 from src.clients.scrapper import ScrapperClient
-from src.scrapper.repository.storage import InMemoryStorage
-from src.scrapper.server import default_lifespan as scrapper_lifespan
 from src.scrapper.api import router as scrapper_router
+from src.scrapper.repository.in_memory import InMemoryLinkRepository
+from src.scrapper.repository.storage import InMemoryStorage
 from src.server import default_lifespan
 from src.state.track import TrackStateStore
 
@@ -32,7 +32,7 @@ def mock_event() -> Mock:
     return event
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_tg_event() -> Mock:
     event = AsyncMock(spec=NewMessage.Event)
     event.chat_id = 111222333
@@ -41,12 +41,12 @@ def mock_tg_event() -> Mock:
     return event
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def scrapper_client_mock() -> Mock:
     return AsyncMock(spec=ScrapperClient)
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def state_store() -> TrackStateStore:
     return TrackStateStore()
 
@@ -70,15 +70,20 @@ def test_client(fast_api_application: FastAPI) -> Generator[TestClient, None, No
         yield test_client
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def scrapper_storage() -> InMemoryStorage:
     return InMemoryStorage()
 
 
 @pytest.fixture
-def scrapper_app(scrapper_storage: InMemoryStorage) -> FastAPI:
+def scrapper_repository() -> InMemoryLinkRepository:
+    return InMemoryLinkRepository()
+
+
+@pytest.fixture
+def scrapper_app(scrapper_repository: InMemoryLinkRepository) -> FastAPI:
     app = FastAPI(title="scrapper_app")
-    app.state.storage = scrapper_storage
+    app.state.repository = scrapper_repository
     app.include_router(router=scrapper_router)
     return app
 

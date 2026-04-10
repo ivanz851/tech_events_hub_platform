@@ -12,11 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 def parse_channel_url(url: str) -> tuple[str | None, str | None]:
-    """
-    Returns (username, invite_hash).
+    """Returns (username, invite_hash).
     Public  channel → (username, None),  e.g. t.me/durov
     Private channel → (None, hash),      e.g. t.me/+gDai8jcIcKoyNjY6
-    Unknown URL     → (None, None)
+    Unknown URL     → (None, None).
     """
     try:
         parsed = urlparse(url)
@@ -29,7 +28,9 @@ def parse_channel_url(url: str) -> tuple[str | None, str | None]:
         return None, None
     if path.startswith("+"):
         return None, path[1:]
-    return path.split("/")[0], None
+    parts = path.split("/")
+    username = parts[1] if len(parts) > 1 and parts[0] == "s" else parts[0]
+    return username, None
 
 
 def extract_channel_username(url: str) -> str | None:
@@ -52,8 +53,8 @@ class TelegramChannelScrapper:
             entity = await self._resolve_entity(url, username, invite_hash)
             messages = await self._client.get_messages(entity, limit=50, min_id=min_id)
             return list(messages)
-        except Exception as exc:  # noqa: BLE001
-            logger.error(
+        except Exception as exc:
+            logger.exception(
                 "Failed to fetch messages",
                 extra={"url": url, "error": str(exc)},
             )
@@ -64,7 +65,7 @@ class TelegramChannelScrapper:
         url: str,
         username: str | None,
         invite_hash: str | None,
-    ) -> Any:
+    ) -> Any:  # noqa: ANN401
         if url in self._entities:
             return self._entities[url]
 
@@ -77,7 +78,7 @@ class TelegramChannelScrapper:
         logger.info("Channel entity resolved and cached", extra={"url": url})
         return entity
 
-    async def _resolve_private(self, invite_hash: str) -> Any:
+    async def _resolve_private(self, invite_hash: str) -> Any:  # noqa: ANN401
         """Join (if needed) and return the channel entity for a private invite link."""
         result = await self._client(CheckChatInviteRequest(hash=invite_hash))
         if isinstance(result, ChatInviteAlready):
