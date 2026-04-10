@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -42,7 +43,7 @@ def _make_http_mock(
 
 @pytest.mark.asyncio
 async def test_register_chat_success(client: ScrapperClient) -> None:
-    mock_http = _make_http_mock(200)
+    mock_http = _make_http_mock(HTTPStatus.OK)
     with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
         await client.register_chat(42)
     mock_http.post.assert_called_once()
@@ -50,20 +51,20 @@ async def test_register_chat_success(client: ScrapperClient) -> None:
 
 @pytest.mark.asyncio
 async def test_register_chat_already_exists_no_error(client: ScrapperClient) -> None:
-    mock_http = _make_http_mock(409)
+    mock_http = _make_http_mock(HTTPStatus.CONFLICT)
     with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
         await client.register_chat(42)
 
 
 @pytest.mark.asyncio
 async def test_register_chat_server_error(client: ScrapperClient) -> None:
-    mock_http = _make_http_mock(500, text="error")
+    mock_http = _make_http_mock(HTTPStatus.INTERNAL_SERVER_ERROR, text="error")
     with (
         patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http),
         pytest.raises(ScrapperClientError) as exc_info,
     ):
         await client.register_chat(42)
-    assert exc_info.value.status_code == 500
+    assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 @pytest.mark.asyncio
@@ -72,7 +73,7 @@ async def test_get_links_success(client: ScrapperClient) -> None:
         "links": [{"id": 1, "url": "https://t.me/ch", "tags": ["py"], "filters": []}],
         "size": 1,
     }
-    mock_http = _make_http_mock(200, json_body=body)
+    mock_http = _make_http_mock(HTTPStatus.OK, json_body=body)
     with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
         links = await client.get_links(chat_id=1)
     assert len(links) == 1
@@ -82,19 +83,19 @@ async def test_get_links_success(client: ScrapperClient) -> None:
 
 @pytest.mark.asyncio
 async def test_get_links_error(client: ScrapperClient) -> None:
-    mock_http = _make_http_mock(404, text="not found")
+    mock_http = _make_http_mock(HTTPStatus.NOT_FOUND, text="not found")
     with (
         patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http),
         pytest.raises(ScrapperClientError) as exc_info,
     ):
         await client.get_links(chat_id=99)
-    assert exc_info.value.status_code == 404
+    assert exc_info.value.status_code == HTTPStatus.NOT_FOUND
 
 
 @pytest.mark.asyncio
 async def test_add_link_success(client: ScrapperClient) -> None:
     body = {"id": 1, "url": "https://t.me/ch", "tags": ["py"], "filters": []}
-    mock_http = _make_http_mock(200, json_body=body)
+    mock_http = _make_http_mock(HTTPStatus.OK, json_body=body)
     with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
         result = await client.add_link(1, "https://t.me/ch", tags=["py"], filters=[])
     assert result.url == "https://t.me/ch"
@@ -103,7 +104,7 @@ async def test_add_link_success(client: ScrapperClient) -> None:
 
 @pytest.mark.asyncio
 async def test_add_link_duplicate(client: ScrapperClient) -> None:
-    mock_http = _make_http_mock(409, text="conflict")
+    mock_http = _make_http_mock(HTTPStatus.CONFLICT, text="conflict")
     with (
         patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http),
         pytest.raises(LinkAlreadyTrackedError),
@@ -113,19 +114,19 @@ async def test_add_link_duplicate(client: ScrapperClient) -> None:
 
 @pytest.mark.asyncio
 async def test_add_link_invalid_body(client: ScrapperClient) -> None:
-    mock_http = _make_http_mock(400, text="bad request")
+    mock_http = _make_http_mock(HTTPStatus.BAD_REQUEST, text="bad request")
     with (
         patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http),
         pytest.raises(ScrapperClientError) as exc_info,
     ):
         await client.add_link(1, "bad", tags=[], filters=[])
-    assert exc_info.value.status_code == 400
+    assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
 
 
 @pytest.mark.asyncio
 async def test_remove_link_success(client: ScrapperClient) -> None:
     body = {"id": 1, "url": "https://t.me/ch", "tags": [], "filters": []}
-    mock_http = _make_http_mock(200, json_body=body)
+    mock_http = _make_http_mock(HTTPStatus.OK, json_body=body)
     with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
         result = await client.remove_link(1, "https://t.me/ch")
     assert result.url == "https://t.me/ch"
@@ -133,13 +134,13 @@ async def test_remove_link_success(client: ScrapperClient) -> None:
 
 @pytest.mark.asyncio
 async def test_remove_link_not_found(client: ScrapperClient) -> None:
-    mock_http = _make_http_mock(404, text="not found")
+    mock_http = _make_http_mock(HTTPStatus.NOT_FOUND, text="not found")
     with (
         patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http),
         pytest.raises(ScrapperClientError) as exc_info,
     ):
         await client.remove_link(1, "https://t.me/nope")
-    assert exc_info.value.status_code == 404
+    assert exc_info.value.status_code == HTTPStatus.NOT_FOUND
 
 
 @pytest.mark.asyncio
