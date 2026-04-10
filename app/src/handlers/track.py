@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from telethon import events
 
 from src.clients.scrapper import LinkAlreadyTrackedError, ScrapperClient, ScrapperClientError
+from src.handlers.untrack import _do_untrack
 from src.state.track import TrackState, TrackStateStore, TrackStep
 
 __all__ = ("make_track_command_handler", "make_track_message_handler")
@@ -59,6 +60,8 @@ def make_track_message_handler(
             await _handle_url_input(event, chat_id, text, state_store)
         elif state.step == TrackStep.WAITING_FOR_FILTERS:
             await _handle_filters_input(event, chat_id, text, state, state_store, scrapper)
+        elif state.step == TrackStep.WAITING_FOR_UNTRACK_URL:
+            await _do_untrack(event, chat_id, text, scrapper, state_store)
 
     return track_message_handler  # type: ignore[return-value]
 

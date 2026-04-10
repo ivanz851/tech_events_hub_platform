@@ -32,25 +32,34 @@ class ScrapperClient:
         self._base_url = base_url
 
     async def register_chat(self, chat_id: int) -> None:
-        async with httpx.AsyncClient(base_url=self._base_url) as client:
-            resp = await client.post(f"/tg-chat/{chat_id}")
-            if resp.status_code not in (HTTPStatus.OK, HTTPStatus.CONFLICT):
-                raise ScrapperClientError(resp.status_code, resp.text)
+        try:
+            async with httpx.AsyncClient(base_url=self._base_url) as client:
+                resp = await client.post(f"/tg-chat/{chat_id}")
+                if resp.status_code not in (HTTPStatus.OK, HTTPStatus.CONFLICT):
+                    raise ScrapperClientError(resp.status_code, resp.text)
+        except httpx.RequestError as exc:
+            raise ScrapperClientError(0, str(exc)) from exc
         logger.info("Registered chat", extra={"chat_id": chat_id})
 
     async def delete_chat(self, chat_id: int) -> None:
-        async with httpx.AsyncClient(base_url=self._base_url) as client:
-            resp = await client.delete(f"/tg-chat/{chat_id}")
-            if resp.status_code not in (HTTPStatus.OK, HTTPStatus.NOT_FOUND):
-                raise ScrapperClientError(resp.status_code, resp.text)
+        try:
+            async with httpx.AsyncClient(base_url=self._base_url) as client:
+                resp = await client.delete(f"/tg-chat/{chat_id}")
+                if resp.status_code not in (HTTPStatus.OK, HTTPStatus.NOT_FOUND):
+                    raise ScrapperClientError(resp.status_code, resp.text)
+        except httpx.RequestError as exc:
+            raise ScrapperClientError(0, str(exc)) from exc
         logger.info("Deleted chat", extra={"chat_id": chat_id})
 
     async def get_links(self, chat_id: int) -> list[LinkResponse]:
-        async with httpx.AsyncClient(base_url=self._base_url) as client:
-            resp = await client.get("/links", headers={"Tg-Chat-Id": str(chat_id)})
-            if resp.status_code != HTTPStatus.OK:
-                raise ScrapperClientError(resp.status_code, resp.text)
-            data = resp.json()
+        try:
+            async with httpx.AsyncClient(base_url=self._base_url) as client:
+                resp = await client.get("/links", headers={"Tg-Chat-Id": str(chat_id)})
+                if resp.status_code != HTTPStatus.OK:
+                    raise ScrapperClientError(resp.status_code, resp.text)
+                data = resp.json()
+        except httpx.RequestError as exc:
+            raise ScrapperClientError(0, str(exc)) from exc
         return [
             LinkResponse(
                 id=item["id"],
@@ -68,17 +77,20 @@ class ScrapperClient:
         tags: list[str],
         filters: list[str],
     ) -> LinkResponse:
-        async with httpx.AsyncClient(base_url=self._base_url) as client:
-            resp = await client.post(
-                "/links",
-                headers={"Tg-Chat-Id": str(chat_id)},
-                json={"link": link, "tags": tags, "filters": filters},
-            )
-            if resp.status_code == HTTPStatus.CONFLICT:
-                raise LinkAlreadyTrackedError(HTTPStatus.CONFLICT, "Link already tracked")
-            if resp.status_code != HTTPStatus.OK:
-                raise ScrapperClientError(resp.status_code, resp.text)
-            data = resp.json()
+        try:
+            async with httpx.AsyncClient(base_url=self._base_url) as client:
+                resp = await client.post(
+                    "/links",
+                    headers={"Tg-Chat-Id": str(chat_id)},
+                    json={"link": link, "tags": tags, "filters": filters},
+                )
+                if resp.status_code == HTTPStatus.CONFLICT:
+                    raise LinkAlreadyTrackedError(HTTPStatus.CONFLICT, "Link already tracked")
+                if resp.status_code != HTTPStatus.OK:
+                    raise ScrapperClientError(resp.status_code, resp.text)
+                data = resp.json()
+        except httpx.RequestError as exc:
+            raise ScrapperClientError(0, str(exc)) from exc
         logger.info("Added link", extra={"chat_id": chat_id, "url": link})
         return LinkResponse(
             id=data["id"],
@@ -88,18 +100,21 @@ class ScrapperClient:
         )
 
     async def remove_link(self, chat_id: int, link: str) -> LinkResponse:
-        async with httpx.AsyncClient(base_url=self._base_url) as client:
-            resp = await client.request(
-                "DELETE",
-                "/links",
-                headers={"Tg-Chat-Id": str(chat_id)},
-                json={"link": link},
-            )
-            if resp.status_code == HTTPStatus.NOT_FOUND:
-                raise ScrapperClientError(HTTPStatus.NOT_FOUND, "Link not found")
-            if resp.status_code != HTTPStatus.OK:
-                raise ScrapperClientError(resp.status_code, resp.text)
-            data = resp.json()
+        try:
+            async with httpx.AsyncClient(base_url=self._base_url) as client:
+                resp = await client.request(
+                    "DELETE",
+                    "/links",
+                    headers={"Tg-Chat-Id": str(chat_id)},
+                    json={"link": link},
+                )
+                if resp.status_code == HTTPStatus.NOT_FOUND:
+                    raise ScrapperClientError(HTTPStatus.NOT_FOUND, "Link not found")
+                if resp.status_code != HTTPStatus.OK:
+                    raise ScrapperClientError(resp.status_code, resp.text)
+                data = resp.json()
+        except httpx.RequestError as exc:
+            raise ScrapperClientError(0, str(exc)) from exc
         logger.info("Removed link", extra={"chat_id": chat_id, "url": link})
         return LinkResponse(
             id=data["id"],

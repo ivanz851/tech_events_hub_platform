@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 __all__ = ("LinkUpdate", "ApiErrorResponse")
 
@@ -7,12 +7,12 @@ class LinkUpdate(BaseModel):
     id: int
     url: str
     description: str
-    tgChatIds: list[int]  # noqa: N815
+    tg_chat_ids: list[int] = Field(alias="tgChatIds")
 
 
 class ApiErrorResponse(BaseModel):
     description: str
     code: str
-    exceptionName: str = ""  # noqa: N815
-    exceptionMessage: str = ""  # noqa: N815
+    exception_name: str = Field(default="", alias="exceptionName")
+    exception_message: str = Field(default="", alias="exceptionMessage")
     stacktrace: list[str] = []

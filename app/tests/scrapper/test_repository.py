@@ -67,7 +67,7 @@ def test_get_links_returns_all(storage: InMemoryStorage) -> None:
     storage.add_link(1, "https://t.me/ch1", [], [])
     storage.add_link(1, "https://t.me/ch2", ["py"], [])
     links = storage.get_links(1)
-    assert len(links) == 2  # noqa: PLR2004
+    assert len(links) == 2
 
 
 def test_get_all_tracked_links(storage: InMemoryStorage) -> None:

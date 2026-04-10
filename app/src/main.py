@@ -66,7 +66,7 @@ def _register_handlers(
         events.NewMessage(pattern=r"^/track(\s|$)"),
     )
     client.add_event_handler(
-        make_untrack_handler(scrapper_client),
+        make_untrack_handler(scrapper_client, state_store),
         events.NewMessage(pattern=r"^/untrack(\s|$)"),
     )
     client.add_event_handler(

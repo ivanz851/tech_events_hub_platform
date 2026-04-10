@@ -86,7 +86,7 @@ def test_get_links(scrapper_test_client: TestClient, chat_id: int) -> None:
     resp = scrapper_test_client.get("/links", headers={"Tg-Chat-Id": str(chat_id)})
     assert resp.status_code == HTTPStatus.OK
     data = resp.json()
-    assert data["size"] == 2  # noqa: PLR2004
+    assert data["size"] == 2
 
 
 def test_remove_link(scrapper_test_client: TestClient, chat_id: int) -> None:

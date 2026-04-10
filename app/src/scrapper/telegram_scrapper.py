@@ -28,7 +28,9 @@ def parse_channel_url(url: str) -> tuple[str | None, str | None]:
         return None, None
     if path.startswith("+"):
         return None, path[1:]
-    return path.split("/")[0], None
+    parts = path.split("/")
+    username = parts[1] if len(parts) > 1 and parts[0] == "s" else parts[0]
+    return username, None
 
 
 def extract_channel_username(url: str) -> str | None:

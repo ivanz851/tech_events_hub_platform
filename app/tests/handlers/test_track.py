@@ -27,15 +27,15 @@ def store() -> TrackStateStore:
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("scrapper")
 async def test_track_command_sets_waiting_url_state(
     mock_event: Mock,
     store: TrackStateStore,
+    scrapper: AsyncMock,
 ) -> None:
     mock_event.raw_text = "/track"
     handler = make_track_command_handler(store)
 
-    with pytest.raises(Exception):  # noqa: B017, PT011
+    with pytest.raises(Exception):
         await handler(mock_event)
 
     state = store.get(100500)
@@ -52,7 +52,7 @@ async def test_track_command_with_url_skips_to_filters(
     mock_event.raw_text = "/track https://t.me/somechannel"
     handler = make_track_command_handler(store)
 
-    with pytest.raises(Exception):  # noqa: B017, PT011
+    with pytest.raises(Exception):
         await handler(mock_event)
 
     state = store.get(100500)
@@ -171,3 +171,44 @@ async def test_track_scrapper_error(
 
     mock_event.respond.assert_called_once()
     assert "ошибка" in mock_event.respond.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_untrack_two_step_flow(
+    mock_event: Mock,
+    store: TrackStateStore,
+    scrapper: AsyncMock,
+) -> None:
+    from src.clients.scrapper import LinkResponse
+
+    store.set(100500, TrackState(step=TrackStep.WAITING_FOR_UNTRACK_URL))
+    mock_event.raw_text = "https://t.me/ch"
+    scrapper.remove_link = AsyncMock(
+        return_value=LinkResponse(id=1, url="https://t.me/ch", tags=[], filters=[]),
+    )
+
+    handler = make_track_message_handler(store, scrapper)
+    await handler(mock_event)
+
+    scrapper.remove_link.assert_called_once_with(100500, "https://t.me/ch")
+    assert not store.has(100500)
+    response_text: str = mock_event.respond.call_args[0][0]
+    assert "удалена" in response_text
+
+
+@pytest.mark.asyncio
+async def test_untrack_two_step_not_found(
+    mock_event: Mock,
+    store: TrackStateStore,
+    scrapper: AsyncMock,
+) -> None:
+    store.set(100500, TrackState(step=TrackStep.WAITING_FOR_UNTRACK_URL))
+    mock_event.raw_text = "https://t.me/ch"
+    scrapper.remove_link = AsyncMock(side_effect=ScrapperClientError(404, "not found"))
+
+    handler = make_track_message_handler(store, scrapper)
+    await handler(mock_event)
+
+    assert not store.has(100500)
+    response_text: str = mock_event.respond.call_args[0][0]
+    assert "не найдена" in response_text

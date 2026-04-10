@@ -10,6 +10,9 @@ telethon = "^1.38.1"
 pydantic-settings = "^2.7.1"
 fastapi = "^0.115.8"
 uvicorn = "^0.34.0"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.0"}
+psycopg = {extras = ["binary", "pool"], version = "^3.1.0"}
+greenlet = "^3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.8.0"
@@ -24,6 +27,7 @@ pytest-repeat = "*"
 pytest-asyncio = "*"
 httpx = "^0.28.1"
 respx = "^0.21.1"
+testcontainers = {extras = ["postgres"], version = "^4.0.0"}
 
 [build-system]
 requires = ["poetry-core"]
@@ -76,6 +80,17 @@ max-branches = 8
 max-bool-expr = 5
 max-public-methods = 5
 max-statements = 40
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "PLR2004", # allow magic numbers
+    "SLF001",  # allow private members access
+    "B017",    # allow pytest.raises(Exception)
+    "PT011",   # allow pytest.raises(Exception) без match
+    "S603",    # allow subprocess
+    "ARG001",  # allow unused fixtures-arguments
+    "ANN401",  # allow Any
+]
 
 [tool.mypy]
 disable_error_code = ["import-untyped", "unused-ignore"]

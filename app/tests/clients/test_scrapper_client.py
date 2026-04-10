@@ -141,3 +141,55 @@ async def test_remove_link_not_found(client: ScrapperClient) -> None:
     ):
         await client.remove_link(1, "https://t.me/nope")
     assert exc_info.value.status_code == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_register_chat_connect_error(client: ScrapperClient) -> None:
+    with (
+        patch(
+            "src.clients.scrapper.httpx.AsyncClient",
+            side_effect=httpx.ConnectError("Connection refused"),
+        ),
+        pytest.raises(ScrapperClientError) as exc_info,
+    ):
+        await client.register_chat(42)
+    assert exc_info.value.status_code == 0
+
+
+@pytest.mark.asyncio
+async def test_get_links_connect_error(client: ScrapperClient) -> None:
+    with (
+        patch(
+            "src.clients.scrapper.httpx.AsyncClient",
+            side_effect=httpx.ConnectError("Connection refused"),
+        ),
+        pytest.raises(ScrapperClientError) as exc_info,
+    ):
+        await client.get_links(chat_id=1)
+    assert exc_info.value.status_code == 0
+
+
+@pytest.mark.asyncio
+async def test_add_link_connect_error(client: ScrapperClient) -> None:
+    with (
+        patch(
+            "src.clients.scrapper.httpx.AsyncClient",
+            side_effect=httpx.ConnectError("Connection refused"),
+        ),
+        pytest.raises(ScrapperClientError) as exc_info,
+    ):
+        await client.add_link(1, "https://t.me/ch", tags=[], filters=[])
+    assert exc_info.value.status_code == 0
+
+
+@pytest.mark.asyncio
+async def test_remove_link_connect_error(client: ScrapperClient) -> None:
+    with (
+        patch(
+            "src.clients.scrapper.httpx.AsyncClient",
+            side_effect=httpx.ConnectError("Connection refused"),
+        ),
+        pytest.raises(ScrapperClientError) as exc_info,
+    ):
+        await client.remove_link(1, "https://t.me/ch")
+    assert exc_info.value.status_code == 0
