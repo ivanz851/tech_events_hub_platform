@@ -114,6 +114,7 @@ venv
 
 # Telegram sessions files
 *.session
+*.session-journal
 
 # Development process drafts
 *.md

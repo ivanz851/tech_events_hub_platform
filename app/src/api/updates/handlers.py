@@ -13,13 +13,19 @@ logger = logging.getLogger(__name__)
 
 @router.post("/updates", status_code=status.HTTP_200_OK)
 async def updates_handler(request: Request, update: LinkUpdate) -> dict[str, str]:
-    tg_client = getattr(request.app, "tg_client", None)
+    delivery = getattr(request.app, "delivery", None)
+    message = _format_update_message(update)
 
+    if delivery is not None:
+        for chat_id in update.tg_chat_ids:
+            await delivery.deliver(chat_id, message)
+        return {"status": "ok"}
+
+    tg_client = getattr(request.app, "tg_client", None)
     if tg_client is None:
         logger.warning("Telegram client not available, skipping notification delivery")
         return {"status": "ok"}
 
-    message = _format_update_message(update)
     for chat_id in update.tg_chat_ids:
         try:
             await tg_client.send_message(chat_id, message)

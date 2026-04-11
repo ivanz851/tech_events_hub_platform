@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 
 from telethon import events
 
+from src.cache.list_cache import ListCache
 from src.clients.scrapper import LinkAlreadyTrackedError, ScrapperClient, ScrapperClientError
 from src.handlers.untrack import _do_untrack
 from src.state.track import TrackState, TrackStateStore, TrackStep
@@ -46,6 +47,7 @@ def make_track_command_handler(state_store: TrackStateStore) -> events.NewMessag
 def make_track_message_handler(
     state_store: TrackStateStore,
     scrapper: ScrapperClient,
+    cache: ListCache | None = None,
 ) -> events.NewMessage:
     async def track_message_handler(event: events.NewMessage.Event) -> None:
         chat_id: int = event.chat_id
@@ -59,9 +61,9 @@ def make_track_message_handler(
         if state.step == TrackStep.WAITING_FOR_URL:
             await _handle_url_input(event, chat_id, text, state_store)
         elif state.step == TrackStep.WAITING_FOR_FILTERS:
-            await _handle_filters_input(event, chat_id, text, state, state_store, scrapper)
+            await _handle_filters_input(event, chat_id, text, state, state_store, scrapper, cache)
         elif state.step == TrackStep.WAITING_FOR_UNTRACK_URL:
-            await _do_untrack(event, chat_id, text, scrapper, state_store)
+            await _do_untrack(event, chat_id, text, scrapper, state_store, cache)
 
     return track_message_handler  # type: ignore[return-value]
 
@@ -86,11 +88,14 @@ async def _handle_filters_input(
     state: TrackState,
     state_store: TrackStateStore,
     scrapper: ScrapperClient,
+    cache: ListCache | None = None,
 ) -> None:
     tags = [] if text == "/skip" else [t.strip() for t in text.split() if t.strip()]
     state_store.clear(chat_id)
     try:
         result = await scrapper.add_link(chat_id, state.url, tags=tags, filters=[])
+        if cache is not None:
+            await cache.invalidate(chat_id)
         tag_info = f" [теги: {', '.join(result.tags)}]" if result.tags else ""
         await event.respond(f"Ссылка добавлена: {result.url}{tag_info}")
     except LinkAlreadyTrackedError:
