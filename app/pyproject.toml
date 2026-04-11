@@ -13,6 +13,8 @@ uvicorn = "^0.34.0"
 sqlalchemy = {extras = ["asyncio"], version = "^2.0.0"}
 psycopg = {extras = ["binary", "pool"], version = "^3.1.0"}
 greenlet = "^3.0.0"
+aiokafka = ">=0.9.0"
+redis = {extras = ["asyncio"], version = "^7.4.0"}
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.8.0"
@@ -27,7 +29,7 @@ pytest-repeat = "*"
 pytest-asyncio = "*"
 httpx = "^0.28.1"
 respx = "^0.21.1"
-testcontainers = {extras = ["postgres"], version = "^4.0.0"}
+testcontainers = {extras = ["kafka", "redis"], version = "^4.14.2"}
 
 [build-system]
 requires = ["poetry-core"]

@@ -16,6 +16,12 @@ class TGBotSettings(BaseSettings):
 
     scrapper_base_url: str = Field(default="http://localhost:8080")
 
+    redis_url: str = Field(default="redis://localhost:6379")
+    kafka_bootstrap_servers: str = Field(default="localhost:9092")
+    kafka_updates_topic: str = Field(default="scrapper.updates")
+    kafka_dlq_topic: str = Field(default="scrapper.updates.dlq")
+    digest_time: str = Field(default="10:00")
+
     model_config: typing.ClassVar[SettingsConfigDict] = SettingsConfigDict(
         extra="ignore",
         frozen=True,

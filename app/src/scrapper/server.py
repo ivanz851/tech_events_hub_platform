@@ -11,12 +11,15 @@ from telethon import TelegramClient
 from src.scrapper.api import router
 from src.scrapper.clients.bot import BotClient
 from src.scrapper.db.engine import create_engine, create_session_factory
+from src.scrapper.kafka.producer import KafkaProducerClient
+from src.scrapper.notification.abstract import AbstractNotificationService
 from src.scrapper.notification.http import HttpNotificationService
+from src.scrapper.notification.kafka_notification import KafkaNotificationService
 from src.scrapper.repository.abstract import AbstractLinkRepository
 from src.scrapper.repository.orm_repository import OrmLinkRepository
 from src.scrapper.repository.sql_repository import SqlLinkRepository
 from src.scrapper.scheduler import Scheduler
-from src.scrapper.settings import AccessType, ScrapperSettings
+from src.scrapper.settings import AccessType, MessageTransport, ScrapperSettings
 from src.scrapper.telegram_scrapper import TelegramChannelScrapper
 from src.settings import TGBotSettings
 
@@ -35,14 +38,28 @@ def _build_repository(settings: ScrapperSettings) -> AbstractLinkRepository:
     return SqlLinkRepository(dsn)
 
 
+def _build_notification(
+    settings: ScrapperSettings,
+    kafka_producer: KafkaProducerClient | None,
+) -> AbstractNotificationService:
+    if settings.message_transport == MessageTransport.KAFKA and kafka_producer is not None:
+        return KafkaNotificationService(kafka_producer, settings.kafka_updates_topic)
+    return HttpNotificationService(BotClient(base_url=settings.bot_base_url))
+
+
 @asynccontextmanager
 async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
     scrapper_settings = ScrapperSettings()  # type: ignore[call-arg]
     bot_settings = TGBotSettings()  # type: ignore[call-arg]
 
     repository = _build_repository(scrapper_settings)
-    bot_client = BotClient(base_url=scrapper_settings.bot_base_url)
-    notification = HttpNotificationService(bot_client)
+
+    kafka_producer: KafkaProducerClient | None = None
+    if scrapper_settings.message_transport == MessageTransport.KAFKA:
+        kafka_producer = KafkaProducerClient(scrapper_settings.kafka_bootstrap_servers)
+        await kafka_producer.start()
+
+    notification = _build_notification(scrapper_settings, kafka_producer)
 
     tg_client = TelegramClient(
         "scrapper_session",
@@ -71,6 +88,8 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
     logger.info("Scrapper started")
     yield
     task.cancel()
+    if kafka_producer is not None:
+        await kafka_producer.stop()
     await tg_client.disconnect()
     logger.info("Scrapper stopped")
 
