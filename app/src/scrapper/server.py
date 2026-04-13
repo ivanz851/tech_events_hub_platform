@@ -8,11 +8,14 @@ import uvicorn
 from fastapi import FastAPI
 from telethon import TelegramClient
 
+from src.resilience.circuit_breaker import CircuitBreaker
+from src.resilience.rate_limiter import RateLimitMiddleware
 from src.scrapper.api import router
 from src.scrapper.clients.bot import BotClient
 from src.scrapper.db.engine import create_engine, create_session_factory
 from src.scrapper.kafka.producer import KafkaProducerClient
 from src.scrapper.notification.abstract import AbstractNotificationService
+from src.scrapper.notification.fallback import FallbackNotificationService
 from src.scrapper.notification.http import HttpNotificationService
 from src.scrapper.notification.kafka_notification import KafkaNotificationService
 from src.scrapper.repository.abstract import AbstractLinkRepository
@@ -24,6 +27,8 @@ from src.scrapper.telegram_scrapper import TelegramChannelScrapper
 from src.settings import TGBotSettings
 
 logger = logging.getLogger(__name__)
+
+_settings = ScrapperSettings()  # type: ignore[call-arg]
 
 
 def _build_repository(settings: ScrapperSettings) -> AbstractLinkRepository:
@@ -38,13 +43,33 @@ def _build_repository(settings: ScrapperSettings) -> AbstractLinkRepository:
     return SqlLinkRepository(dsn)
 
 
+def _build_bot_client(settings: ScrapperSettings) -> BotClient:
+    cb = CircuitBreaker(
+        sliding_window_size=settings.cb_sliding_window_size,
+        min_calls=settings.cb_min_calls,
+        failure_rate_threshold=settings.cb_failure_rate_threshold,
+        wait_duration_seconds=settings.cb_wait_duration_seconds,
+        permitted_calls_in_half_open=settings.cb_permitted_calls_in_half_open,
+    )
+    return BotClient(
+        base_url=settings.bot_base_url,
+        timeout_seconds=settings.http_timeout_seconds,
+        retry_count=settings.retry_count,
+        retry_backoff_seconds=settings.retry_backoff_seconds,
+        retry_on_codes=set(settings.retry_on_codes),
+        circuit_breaker=cb,
+    )
+
+
 def _build_notification(
     settings: ScrapperSettings,
     kafka_producer: KafkaProducerClient | None,
 ) -> AbstractNotificationService:
+    http_service = HttpNotificationService(_build_bot_client(settings))
     if settings.message_transport == MessageTransport.KAFKA and kafka_producer is not None:
-        return KafkaNotificationService(kafka_producer, settings.kafka_updates_topic)
-    return HttpNotificationService(BotClient(base_url=settings.bot_base_url))
+        kafka_service = KafkaNotificationService(kafka_producer, settings.kafka_updates_topic)
+        return FallbackNotificationService(kafka_service, http_service)
+    return http_service
 
 
 @asynccontextmanager
@@ -96,6 +121,7 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="scrapper_app", lifespan=default_lifespan)
 app.include_router(router=router)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=_settings.rate_limit_per_minute)
 
 
 if __name__ == "__main__":

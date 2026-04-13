@@ -27,6 +27,7 @@ from src.handlers import (
     unknown_command_handler,
 )
 from src.kafka.consumer import KafkaUpdateConsumer
+from src.resilience.circuit_breaker import CircuitBreaker
 from src.server import app
 from src.settings import TGBotSettings
 from src.state.track import TrackStateStore
@@ -96,9 +97,27 @@ def _register_handlers(
     )
 
 
+def _build_scrapper_client(settings: TGBotSettings) -> ScrapperClient:
+    cb = CircuitBreaker(
+        sliding_window_size=settings.cb_sliding_window_size,
+        min_calls=settings.cb_min_calls,
+        failure_rate_threshold=settings.cb_failure_rate_threshold,
+        wait_duration_seconds=settings.cb_wait_duration_seconds,
+        permitted_calls_in_half_open=settings.cb_permitted_calls_in_half_open,
+    )
+    return ScrapperClient(
+        base_url=settings.scrapper_base_url,
+        timeout_seconds=settings.http_timeout_seconds,
+        retry_count=settings.retry_count,
+        retry_backoff_seconds=settings.retry_backoff_seconds,
+        retry_on_codes=set(settings.retry_on_codes),
+        circuit_breaker=cb,
+    )
+
+
 async def main() -> None:
     settings = TGBotSettings()  # type: ignore[call-arg]
-    scrapper_client = ScrapperClient(base_url=settings.scrapper_base_url)
+    scrapper_client = _build_scrapper_client(settings)
     state_store = TrackStateStore()
 
     redis_client: aioredis.Redis = aioredis.from_url(
