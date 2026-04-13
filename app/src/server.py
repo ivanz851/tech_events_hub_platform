@@ -15,8 +15,12 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from src.api import router
+from src.resilience.rate_limiter import RateLimitMiddleware
+from src.settings import TGBotSettings
 
 logger = logging.getLogger(__name__)
+
+_settings = TGBotSettings()  # type: ignore[call-arg]
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> Response:
@@ -48,6 +52,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimitMiddleware, requests_per_minute=_settings.rate_limit_per_minute)
 
 if __name__ == "__main__":
     logger = logging.getLogger(__name__)
