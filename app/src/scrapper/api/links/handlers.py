@@ -3,6 +3,7 @@ import logging
 from fastapi import APIRouter, Header, Request, status
 from fastapi.responses import JSONResponse
 
+from src.metrics import detect_link_type, scrapper_active_links
 from src.scrapper.api.schemas import (
     AddLinkRequest,
     ApiErrorResponse,
@@ -71,6 +72,7 @@ async def add_link(
         return JSONResponse(status_code=409, content=error.model_dump())
 
     logger.info("Added link", extra={"chat_id": tg_chat_id, "url": body.link})
+    scrapper_active_links.labels(link_type=detect_link_type(body.link)).inc()
     link = LinkResponse(id=record.id, url=record.url, tags=record.tags, filters=record.filters)
     return JSONResponse(status_code=200, content=link.model_dump())
 
@@ -102,5 +104,6 @@ async def remove_link(
         return JSONResponse(status_code=404, content=error.model_dump())
 
     logger.info("Removed link", extra={"chat_id": tg_chat_id, "url": body.link})
+    scrapper_active_links.labels(link_type=detect_link_type(body.link)).dec()
     link = LinkResponse(id=record.id, url=record.url, tags=record.tags, filters=record.filters)
     return JSONResponse(status_code=200, content=link.model_dump())

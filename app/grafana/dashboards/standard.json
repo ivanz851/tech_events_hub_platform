@@ -1,0 +1,80 @@
+{
+  "title": "Standard Metrics",
+  "uid": "standard-metrics",
+  "version": 1,
+  "schemaVersion": 37,
+  "tags": ["standard", "RED", "memory"],
+  "templating": {
+    "list": [
+      {
+        "name": "app",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(up, job)",
+        "label": "Application",
+        "multi": false,
+        "includeAll": false,
+        "current": {}
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request Rate (R)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(python_http_requests_total{job=\"$app\"}[1m]))",
+          "legendFormat": "req/s"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Error Rate (E)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(python_http_requests_total{job=\"$app\", status=~\"5..\"}[1m]))",
+          "legendFormat": "errors/s"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Request Duration p95 (D)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(python_http_request_duration_seconds_bucket{job=\"$app\"}[1m])) by (le))",
+          "legendFormat": "p95 latency"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Memory Usage by Type",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{job=\"$app\"}",
+          "legendFormat": "RSS"
+        },
+        {
+          "expr": "process_virtual_memory_bytes{job=\"$app\"}",
+          "legendFormat": "Virtual"
+        }
+      ]
+    }
+  ]
+}

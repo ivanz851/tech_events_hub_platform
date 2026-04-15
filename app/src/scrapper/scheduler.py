@@ -1,6 +1,8 @@
 import asyncio
 import logging
+import time
 
+from src.metrics import detect_link_type, scrapper_scrape_duration_seconds
 from src.scrapper.models import EventData, TrackedLink
 from src.scrapper.notification.abstract import AbstractNotificationService, NotificationError
 from src.scrapper.repository.abstract import AbstractLinkRepository
@@ -55,6 +57,17 @@ class Scheduler:
             await self._process_url(tracked)
 
     async def _process_url(self, tracked: TrackedLink) -> None:
+        url = tracked.url
+        link_type = detect_link_type(url)
+        start = time.monotonic()
+        try:
+            await self._process_url_inner(tracked)
+        finally:
+            scrapper_scrape_duration_seconds.labels(link_type=link_type).observe(
+                time.monotonic() - start,
+            )
+
+    async def _process_url_inner(self, tracked: TrackedLink) -> None:
         url = tracked.url
         if url not in self._last_message_ids:
             await self._initialize_baseline(url)

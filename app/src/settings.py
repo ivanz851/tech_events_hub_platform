@@ -33,6 +33,8 @@ class TGBotSettings(BaseSettings):
     cb_wait_duration_seconds: float = Field(default=1.0)
     cb_permitted_calls_in_half_open: int = Field(default=1)
 
+    metrics_port: int = Field(default=9000)
+
     @field_validator("retry_on_codes", mode="before")
     @classmethod
     def _parse_retry_codes(cls, v: object) -> list[int]:
