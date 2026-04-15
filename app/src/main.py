@@ -4,6 +4,7 @@ import logging
 
 import redis.asyncio as aioredis
 import uvicorn
+from prometheus_client import start_http_server
 from telethon import TelegramClient, events
 from telethon.errors.rpcerrorlist import ApiIdInvalidError
 from telethon.tl.functions.bots import SetBotCommandsRequest
@@ -27,6 +28,7 @@ from src.handlers import (
     unknown_command_handler,
 )
 from src.kafka.consumer import KafkaUpdateConsumer
+from src.metrics import bot_messages_total
 from src.resilience.circuit_breaker import CircuitBreaker
 from src.server import app
 from src.settings import TGBotSettings
@@ -90,6 +92,11 @@ def _register_handlers(
         make_notify_handler(notify_mode_store),
         events.NewMessage(pattern=r"^/notify(\s|$)"),
     )
+
+    async def _count_message(_event: object) -> None:
+        bot_messages_total.inc()
+
+    client.add_event_handler(_count_message, events.NewMessage())
     client.add_event_handler(unknown_command_handler, events.NewMessage())
     client.add_event_handler(
         make_track_message_handler(state_store, scrapper_client, list_cache),
@@ -117,6 +124,8 @@ def _build_scrapper_client(settings: TGBotSettings) -> ScrapperClient:
 
 async def main() -> None:
     settings = TGBotSettings()  # type: ignore[call-arg]
+    start_http_server(settings.metrics_port)
+    logger.info("Metrics server started", extra={"port": settings.metrics_port})
     scrapper_client = _build_scrapper_client(settings)
     state_store = TrackStateStore()
 

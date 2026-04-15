@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
+from prometheus_client import start_http_server
 from telethon import TelegramClient
 
 from src.resilience.circuit_breaker import CircuitBreaker
@@ -76,6 +77,9 @@ def _build_notification(
 async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
     scrapper_settings = ScrapperSettings()  # type: ignore[call-arg]
     bot_settings = TGBotSettings()  # type: ignore[call-arg]
+
+    start_http_server(scrapper_settings.metrics_port)
+    logger.info("Metrics server started", extra={"port": scrapper_settings.metrics_port})
 
     repository = _build_repository(scrapper_settings)
 

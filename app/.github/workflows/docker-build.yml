@@ -1,0 +1,24 @@
+name: Docker Build
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-bot:
+    name: Build bot image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build bot Docker image
+        run: docker build -f app/bot.Dockerfile -t tech-events-bot:${{ github.sha }} app/
+
+  build-scrapper:
+    name: Build scrapper image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build scrapper Docker image
+        run: docker build -f app/scrapper.Dockerfile -t tech-events-scrapper:${{ github.sha }} app/

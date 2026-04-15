@@ -67,6 +67,84 @@ services:
     networks:
       - backend
 
+  bot:
+    container_name: bot
+    build:
+      context: .
+      dockerfile: bot.Dockerfile
+    ports:
+      - "7777:7777"
+      - "9000:9000"
+    environment:
+      BOT_API_ID: ${BOT_API_ID}
+      BOT_API_HASH: ${BOT_API_HASH}
+      BOT_TOKEN: ${BOT_TOKEN}
+      BOT_SCRAPPER_BASE_URL: http://scrapper:8080
+      BOT_REDIS_URL: redis://redis:6379
+      BOT_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      BOT_METRICS_PORT: 9000
+    depends_on:
+      - redis
+      - kafka
+    networks:
+      - backend
+
+  scrapper:
+    container_name: scrapper
+    build:
+      context: .
+      dockerfile: scrapper.Dockerfile
+    ports:
+      - "8080:8080"
+      - "9001:9001"
+    environment:
+      BOT_API_ID: ${BOT_API_ID}
+      BOT_API_HASH: ${BOT_API_HASH}
+      SCRAPPER_BOT_BASE_URL: http://bot:7777/api/v1
+      SCRAPPER_DB_URL: postgresql+psycopg://postgres:postgres@postgresql:5432/scrapper
+      SCRAPPER_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SCRAPPER_METRICS_PORT: 9001
+    depends_on:
+      liquibase-migrations:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_started
+    networks:
+      - backend
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    depends_on:
+      - bot
+      - scrapper
+    networks:
+      - backend
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana-oss:latest
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - backend
+
 networks:
   backend:
     driver: bridge
@@ -74,3 +152,5 @@ networks:
 volumes:
   kafka_data:
   redis_data:
+  prometheus_data:
+  grafana_data:

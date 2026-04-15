@@ -1,0 +1,57 @@
+{
+  "title": "Business Metrics",
+  "uid": "business-metrics",
+  "version": 1,
+  "schemaVersion": 37,
+  "tags": ["business", "custom"],
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "User Messages per Second",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(bot_messages_total[1m])",
+          "legendFormat": "messages/s"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Active Tracked Links by Type",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "scrapper_active_links",
+          "legendFormat": "{{link_type}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Scrape Duration Percentiles by Type",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(scrapper_scrape_duration_seconds_bucket[5m])) by (le, link_type))",
+          "legendFormat": "p50 {{link_type}}"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(scrapper_scrape_duration_seconds_bucket[5m])) by (le, link_type))",
+          "legendFormat": "p95 {{link_type}}"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(scrapper_scrape_duration_seconds_bucket[5m])) by (le, link_type))",
+          "legendFormat": "p99 {{link_type}}"
+        }
+      ]
+    }
+  ]
+}
