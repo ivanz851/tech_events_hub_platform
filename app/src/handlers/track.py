@@ -4,7 +4,12 @@ from urllib.parse import urlparse
 from telethon import events
 
 from src.cache.list_cache import ListCache
-from src.clients.scrapper import LinkAlreadyTrackedError, ScrapperClient, ScrapperClientError
+from src.clients.scrapper import (
+    LinkAlreadyTrackedError,
+    LinkValidationError,
+    ScrapperClient,
+    ScrapperClientError,
+)
 from src.handlers.untrack import _do_untrack
 from src.state.track import TrackState, TrackStateStore, TrackStep
 
@@ -16,6 +21,9 @@ _MSG_ENTER_URL = "Введите ссылку для отслеживания:"
 _MSG_ENTER_FILTERS = "Настройте теги (через пробел, опционально). Чтобы пропустить, введите /skip:"
 _MSG_ALREADY_TRACKED = "Этот ресурс уже отслеживается."
 _MSG_INVALID_URL = "Некорректная ссылка. Введите URL, начинающийся с http:// или https://"
+_MSG_VALIDATION_ERROR = (
+    "Не удалось получить доступ к сайту. Проверьте ссылку или ресурс защищён от ботов."
+)
 
 
 def _is_valid_url(url: str) -> bool:
@@ -98,6 +106,8 @@ async def _handle_filters_input(
             await cache.invalidate(chat_id)
         tag_info = f" [теги: {', '.join(result.tags)}]" if result.tags else ""
         await event.respond(f"Ссылка добавлена: {result.url}{tag_info}")
+    except LinkValidationError:
+        await event.respond(_MSG_VALIDATION_ERROR)
     except LinkAlreadyTrackedError:
         await event.respond(_MSG_ALREADY_TRACKED)
     except ScrapperClientError as exc:

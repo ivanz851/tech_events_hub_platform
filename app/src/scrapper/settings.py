@@ -47,6 +47,8 @@ class ScrapperSettings(BaseSettings):
     cb_wait_duration_seconds: float = Field(default=1.0)
     cb_permitted_calls_in_half_open: int = Field(default=1)
 
+    validation_timeout_seconds: float = Field(default=5.0)
+
     metrics_port: int = Field(default=9001)
 
     @field_validator("retry_on_codes", mode="before")

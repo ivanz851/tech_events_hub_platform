@@ -24,6 +24,9 @@ from src.scrapper.repository.orm_repository import OrmLinkRepository
 from src.scrapper.repository.sql_repository import SqlLinkRepository
 from src.scrapper.scheduler import Scheduler
 from src.scrapper.settings import AccessType, MessageTransport, ScrapperSettings
+from src.scrapper.strategies.factory import StrategyFactory
+from src.scrapper.strategies.telegram import TelegramScrapperStrategy
+from src.scrapper.strategies.web import WebScrapperStrategy
 from src.scrapper.telegram_scrapper import TelegramChannelScrapper
 from src.settings import TGBotSettings
 
@@ -102,16 +105,26 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
     await tg_client.start()
 
     tg_scrapper = TelegramChannelScrapper(tg_client)
+    web_strategy = WebScrapperStrategy(
+        timeout_seconds=scrapper_settings.validation_timeout_seconds,
+    )
+    tg_strategy = TelegramScrapperStrategy(
+        tg_scrapper,
+        timeout_seconds=scrapper_settings.validation_timeout_seconds,
+    )
+    strategy_factory = StrategyFactory(tg_strategy=tg_strategy, web_strategy=web_strategy)
     scheduler = Scheduler(
         repository=repository,
         notification=notification,
         tg_scrapper=tg_scrapper,
+        web_strategy=web_strategy,
         interval_seconds=scrapper_settings.scheduler_interval_seconds,
         batch_size=scrapper_settings.batch_size,
         worker_count=scrapper_settings.worker_count,
     )
 
     application.state.repository = repository
+    application.state.strategy_factory = strategy_factory
 
     task = asyncio.create_task(scheduler.run())
     logger.info("Scrapper started")
