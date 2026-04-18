@@ -23,6 +23,7 @@
 \usepackage{tablefootnote}
 \usepackage[nottoc]{tocbibind}
 \usepackage{pdfpages}
+\usepackage[titletoc,title]{appendix}
 
 \usepackage{chngcntr} % нумерация графиков и таблиц по секциям
 \counterwithin{table}{section}
@@ -69,28 +70,42 @@
 	\tableofcontents
 }
 \newpage
-\input{1_glossary}
+\input{glossary}
 \newpage 
-\input{2_introduction/main}
+\input{introduction/main}
 \newpage
-\input{3_literature_overview}
+\input{literature_overview}
 \newpage
-\input{4_product_research}
+\input{product_research/main}
 \newpage
-\input{5_architecture/main}
+\input{architecture/main}
 \newpage
-\input{6_sources_parsing/main}
+\input{auth/main}
 \newpage
-\input{7_llm_summarization}
+\input{sources_parsing/main}
 \newpage
-\input{8_fault_tolerance/main}
+\input{llm_summarization}
 \newpage
-\input{9_observability/main}
+\input{fault_tolerance/main}
 \newpage
-\input{10_ci_cd.tex}
+\input{observability/main}
 \newpage
-\input{11_conclusion}
+\input{ci_cd.tex}
+\newpage
+\input{testing/main}
+\newpage
+\input{conclusion}
 \newpage
 \input{bibliography}
+
+\newpage
+\begin{appendices}
+    \renewcommand{\thesection}{\Asbuk{section}.}
+
+    \input{appendices/ta_questionnaire}
+    
+    \newpage
+    \input{appendices/launch_instructions/main}
+\end{appendices}
 
 \end{document}
