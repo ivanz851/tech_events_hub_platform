@@ -13,9 +13,10 @@ from src.scrapper.repository.orm_repository import OrmLinkRepository
 from src.scrapper.repository.sql_repository import SqlLinkRepository
 from src.scrapper.settings import AccessType, ScrapperSettings
 
-_SCHEMA_FILE = (
-    pathlib.Path(__file__).parent.parent.parent.parent / "migrations" / "00-initial-schema.sql"
-)
+_SCHEMA_FILES = [
+    pathlib.Path(__file__).parent.parent.parent.parent / "migrations" / "00-initial-schema.sql",
+    pathlib.Path(__file__).parent.parent.parent.parent / "migrations" / "01-identity-schema.sql",
+]
 
 _PODMAN_BIN = "/opt/podman/bin/podman"
 
@@ -105,10 +106,10 @@ def _extract_sql_statements(sql: str) -> list[str]:
 def apply_schema(pg_dsn: str) -> None:
     if _NO_DOCKER:
         return
-    sql = _SCHEMA_FILE.read_text()
     with psycopg.connect(pg_dsn) as conn:
-        for stmt in _extract_sql_statements(sql):
-            conn.execute(stmt)
+        for schema_file in _SCHEMA_FILES:
+            for stmt in _extract_sql_statements(schema_file.read_text()):
+                conn.execute(stmt)
         conn.commit()
 
 

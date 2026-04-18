@@ -20,6 +20,8 @@ def _make_app(
 ) -> FastAPI:
     app = FastAPI(title="scrapper_app")
     app.state.repository = repository
+    app.state.jwt_secret = "test-secret"
+    app.state.jwt_expire_minutes = 60
     if has_factory:
         strategy = AsyncMock()
         if validation_fails:

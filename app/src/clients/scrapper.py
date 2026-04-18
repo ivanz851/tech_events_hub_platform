@@ -179,6 +179,25 @@ class ScrapperClient:
         logger.info("Added link", extra={"chat_id": chat_id, "url": link})
         return result
 
+    async def link_telegram(self, link_token: str, tg_chat_id: int) -> None:
+        async def _call() -> None:
+            try:
+                async with httpx.AsyncClient(
+                    base_url=self._base_url,
+                    timeout=self._timeout,
+                ) as client:
+                    resp = await client.post(
+                        "/auth/telegram/link",
+                        json={"link_token": link_token, "tg_chat_id": tg_chat_id},
+                    )
+                    if resp.status_code != HTTPStatus.OK:
+                        raise ScrapperClientError(resp.status_code, resp.text)
+            except httpx.RequestError as exc:
+                raise ScrapperClientError(0, str(exc)) from exc
+
+        await self._execute(_call)
+        logger.info("Linked telegram", extra={"tg_chat_id": tg_chat_id})
+
     async def remove_link(self, chat_id: int, link: str) -> LinkResponse:
         async def _call() -> LinkResponse:
             try:

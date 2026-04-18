@@ -1,4 +1,5 @@
 from unittest.mock import AsyncMock, MagicMock
+from uuid import UUID
 
 import pytest
 import pytest_asyncio
@@ -30,6 +31,13 @@ async def repository() -> InMemoryLinkRepository:
     return repo
 
 
+@pytest_asyncio.fixture
+async def user_ids(repository: InMemoryLinkRepository) -> tuple[UUID, UUID]:
+    uid1 = await repository.get_or_create_by_telegram(1)
+    uid2 = await repository.get_or_create_by_telegram(2)
+    return uid1, uid2
+
+
 @pytest.fixture
 def notification() -> AsyncMock:
     return AsyncMock(spec=AbstractNotificationService)
@@ -38,12 +46,14 @@ def notification() -> AsyncMock:
 @pytest.mark.asyncio
 async def test_scheduler_notifies_only_subscribed_users(
     repository: InMemoryLinkRepository,
+    user_ids: tuple[UUID, UUID],
     notification: AsyncMock,
 ) -> None:
-    await repository.add_link(1, "https://t.me/url_a", [], [])
-    await repository.add_link(2, "https://t.me/url_b", [], [])
-    await repository.add_link(1, "https://t.me/url_c", [], [])
-    await repository.add_link(2, "https://t.me/url_c", [], [])
+    uid1, uid2 = user_ids
+    await repository.add_link(uid1, "https://t.me/url_a", [], [])
+    await repository.add_link(uid2, "https://t.me/url_b", [], [])
+    await repository.add_link(uid1, "https://t.me/url_c", [], [])
+    await repository.add_link(uid2, "https://t.me/url_c", [], [])
 
     scrapper = _make_scrapper([_make_message(100)])
     scheduler = Scheduler(repository, notification, scrapper, interval_seconds=9999)
@@ -68,9 +78,11 @@ async def test_scheduler_notifies_only_subscribed_users(
 @pytest.mark.asyncio
 async def test_scheduler_no_new_messages_no_notification(
     repository: InMemoryLinkRepository,
+    user_ids: tuple[UUID, UUID],
     notification: AsyncMock,
 ) -> None:
-    await repository.add_link(1, "https://t.me/ch", [], [])
+    uid1, _ = user_ids
+    await repository.add_link(uid1, "https://t.me/ch", [], [])
     scrapper = _make_scrapper([_make_message(10)])
     scheduler = Scheduler(repository, notification, scrapper, interval_seconds=9999)
 
@@ -96,9 +108,11 @@ async def test_scheduler_no_tracked_links_no_notifications(
 @pytest.mark.asyncio
 async def test_scheduler_notification_error_does_not_crash(
     repository: InMemoryLinkRepository,
+    user_ids: tuple[UUID, UUID],
     notification: AsyncMock,
 ) -> None:
-    await repository.add_link(1, "https://t.me/ch", [], [])
+    uid1, _ = user_ids
+    await repository.add_link(uid1, "https://t.me/ch", [], [])
     notification.send_update = AsyncMock(side_effect=NotificationError("server error"))
 
     scrapper = _make_scrapper([_make_message(10)])
@@ -112,9 +126,11 @@ async def test_scheduler_notification_error_does_not_crash(
 @pytest.mark.asyncio
 async def test_scheduler_does_not_notify_same_message_twice(
     repository: InMemoryLinkRepository,
+    user_ids: tuple[UUID, UUID],
     notification: AsyncMock,
 ) -> None:
-    await repository.add_link(1, "https://t.me/ch", [], [])
+    uid1, _ = user_ids
+    await repository.add_link(uid1, "https://t.me/ch", [], [])
     notification.send_update = AsyncMock()
 
     scrapper = _make_scrapper([_make_message(10)])

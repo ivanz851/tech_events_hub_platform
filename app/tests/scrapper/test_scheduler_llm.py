@@ -22,12 +22,17 @@ def _make_scrapper(messages: list[MagicMock] | None = None) -> AsyncMock:
     return scrapper
 
 
+async def _make_repo_with_link(chat_id: int, url: str) -> InMemoryLinkRepository:
+    repo = InMemoryLinkRepository()
+    await repo.register_chat(chat_id)
+    user_id = await repo.get_or_create_by_telegram(chat_id)
+    await repo.add_link(user_id, url, [], [])
+    return repo
+
+
 @pytest.mark.asyncio
 async def test_is_event_false_skips_notification() -> None:
-    repo = InMemoryLinkRepository()
-    await repo.register_chat(1)
-    await repo.add_link(1, "https://t.me/testchannel", [], [])
-
+    repo = await _make_repo_with_link(1, "https://t.me/testchannel")
     notification = AsyncMock(spec=AbstractNotificationService)
 
     llm_client = MagicMock()
@@ -53,10 +58,7 @@ async def test_is_event_false_skips_notification() -> None:
 
 @pytest.mark.asyncio
 async def test_is_event_true_sends_notification() -> None:
-    repo = InMemoryLinkRepository()
-    await repo.register_chat(1)
-    await repo.add_link(1, "https://t.me/testchannel", [], [])
-
+    repo = await _make_repo_with_link(1, "https://t.me/testchannel")
     notification = AsyncMock(spec=AbstractNotificationService)
 
     llm_client = MagicMock()
@@ -90,10 +92,7 @@ async def test_is_event_true_sends_notification() -> None:
 
 @pytest.mark.asyncio
 async def test_no_llm_client_always_sends_notification() -> None:
-    repo = InMemoryLinkRepository()
-    await repo.register_chat(1)
-    await repo.add_link(1, "https://t.me/testchannel", [], [])
-
+    repo = await _make_repo_with_link(1, "https://t.me/testchannel")
     notification = AsyncMock(spec=AbstractNotificationService)
 
     scrapper = _make_scrapper([_make_message(10)])
@@ -115,10 +114,7 @@ async def test_no_llm_client_always_sends_notification() -> None:
 
 @pytest.mark.asyncio
 async def test_llm_analyze_none_skips_notification() -> None:
-    repo = InMemoryLinkRepository()
-    await repo.register_chat(1)
-    await repo.add_link(1, "https://t.me/testchannel", [], [])
-
+    repo = await _make_repo_with_link(1, "https://t.me/testchannel")
     notification = AsyncMock(spec=AbstractNotificationService)
 
     llm_client = MagicMock()
