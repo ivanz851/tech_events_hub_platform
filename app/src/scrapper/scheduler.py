@@ -11,6 +11,7 @@ from src.scrapper.notification.abstract import AbstractNotificationService, Noti
 from src.scrapper.strategies.abstract import LinkValidationError
 
 if TYPE_CHECKING:
+    from src.scrapper.llm.client import LLMEventResult, YandexLLMClient
     from src.scrapper.repository.abstract import AbstractLinkRepository
     from src.scrapper.strategies.web import WebScrapperStrategy
     from src.scrapper.telegram_scrapper import TelegramChannelScrapper
@@ -30,6 +31,7 @@ class Scheduler:
         interval_seconds: int = 10,
         batch_size: int = 100,
         worker_count: int = 4,
+        llm_client: YandexLLMClient | None = None,
     ) -> None:
         self._repository = repository
         self._notification = notification
@@ -38,6 +40,7 @@ class Scheduler:
         self._interval = interval_seconds
         self._batch_size = batch_size
         self._worker_count = worker_count
+        self._llm_client = llm_client
         self._update_counter: int = 0
         self._last_message_ids: dict[str, int] = {}
         self._last_content_hashes: dict[str, str] = {}
@@ -102,7 +105,11 @@ class Scheduler:
         self._update_counter += 1
         logger.info("New content detected", extra={"url": url, "new_posts": len(new_messages)})
 
-        event = _extract_event_data(new_messages[0].text if new_messages else None)
+        text = new_messages[0].text if new_messages else None
+        event = await self._analyze_content(text, url, fallback=EventData(summary=text))
+        if event is None:
+            logger.info("Not an IT event, skipping notification", extra={"url": url})
+            return
         await self._repository.save_event_data(tracked.link_id, event)
         await self._notify(url, tracked.chat_ids, event)
 
@@ -130,9 +137,26 @@ class Scheduler:
         self._last_content_hashes[url] = current_hash
         self._update_counter += 1
         logger.info("Web content changed", extra={"url": url})
-        event = EventData(summary=f"Страница обновилась: {url}")
+        fallback = EventData(summary=f"Страница обновилась: {url}")
+        event = await self._analyze_content(content, url, fallback=fallback)
+        if event is None:
+            logger.info("Not an IT event, skipping notification", extra={"url": url})
+            return
         await self._repository.save_event_data(tracked.link_id, event)
         await self._notify(url, tracked.chat_ids, event)
+
+    async def _analyze_content(
+        self,
+        text: str | None,
+        url: str,
+        fallback: EventData,
+    ) -> EventData | None:
+        if self._llm_client is None or not text:
+            return fallback
+        result = await self._llm_client.analyze(text, url)
+        if result is None or not result.is_event:
+            return None
+        return _llm_result_to_event_data(result)
 
     async def _initialize_baseline(self, url: str) -> None:
         messages = await self._tg_scrapper.get_new_messages(url, min_id=0)
@@ -156,5 +180,16 @@ class Scheduler:
             logger.exception("Failed to notify bot", extra={"url": url, "error": str(exc)})
 
 
-def _extract_event_data(message_text: str | None) -> EventData:
-    return EventData(summary=message_text)
+def _llm_result_to_event_data(result: LLMEventResult) -> EventData:
+    return EventData(
+        title=result.title,
+        event_date=result.event_date,
+        location=result.location,
+        price=result.price,
+        registration_url=result.registration_url,
+        format=result.format,
+        event_type=result.event_type,
+        summary=result.summary,
+        tags=result.tags,
+        organizer=result.organizer,
+    )

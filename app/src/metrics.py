@@ -6,6 +6,8 @@ from prometheus_client import Counter, Gauge, Histogram
 __all__ = (
     "bot_messages_total",
     "scrapper_active_links",
+    "scrapper_llm_errors_total",
+    "scrapper_llm_generation_duration_seconds",
     "scrapper_scrape_duration_seconds",
     "detect_link_type",
 )
@@ -26,6 +28,17 @@ scrapper_scrape_duration_seconds: Histogram = Histogram(
     "Duration of a single URL scrape in seconds by link type",
     ["link_type"],
     buckets=[0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0],
+)
+
+scrapper_llm_generation_duration_seconds: Histogram = Histogram(
+    "scrapper_llm_generation_duration_seconds",
+    "Duration of LLM event analysis call in seconds",
+    buckets=[0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0],
+)
+
+scrapper_llm_errors_total: Counter = Counter(
+    "scrapper_llm_errors",
+    "Total number of LLM API errors or JSON parse errors",
 )
 
 

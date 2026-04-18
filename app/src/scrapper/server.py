@@ -15,6 +15,7 @@ from src.scrapper.api import router
 from src.scrapper.clients.bot import BotClient
 from src.scrapper.db.engine import create_engine, create_session_factory
 from src.scrapper.kafka.producer import KafkaProducerClient
+from src.scrapper.llm.client import YandexLLMClient
 from src.scrapper.notification.abstract import AbstractNotificationService
 from src.scrapper.notification.fallback import FallbackNotificationService
 from src.scrapper.notification.http import HttpNotificationService
@@ -45,6 +46,27 @@ def _build_repository(settings: ScrapperSettings) -> AbstractLinkRepository:
         "postgresql://",
     )
     return SqlLinkRepository(dsn)
+
+
+def _build_llm_client(settings: ScrapperSettings) -> YandexLLMClient | None:
+    if not settings.yandex_api_key or not settings.yandex_folder_id:
+        return None
+    cb = CircuitBreaker(
+        sliding_window_size=settings.cb_sliding_window_size,
+        min_calls=settings.cb_min_calls,
+        failure_rate_threshold=settings.cb_failure_rate_threshold,
+        wait_duration_seconds=settings.cb_wait_duration_seconds,
+        permitted_calls_in_half_open=settings.cb_permitted_calls_in_half_open,
+    )
+    return YandexLLMClient(
+        api_key=settings.yandex_api_key,
+        folder_id=settings.yandex_folder_id,
+        model=settings.yandex_model,
+        circuit_breaker=cb,
+        retry_count=settings.retry_count,
+        retry_backoff_seconds=settings.retry_backoff_seconds,
+        retry_on_codes={429, 500, 502, 503, 504},
+    )
 
 
 def _build_bot_client(settings: ScrapperSettings) -> BotClient:
@@ -113,6 +135,9 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
         timeout_seconds=scrapper_settings.validation_timeout_seconds,
     )
     strategy_factory = StrategyFactory(tg_strategy=tg_strategy, web_strategy=web_strategy)
+    llm_client = _build_llm_client(scrapper_settings)
+    if llm_client is not None:
+        logger.info("YandexGPT LLM client initialized")
     scheduler = Scheduler(
         repository=repository,
         notification=notification,
@@ -121,6 +146,7 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
         interval_seconds=scrapper_settings.scheduler_interval_seconds,
         batch_size=scrapper_settings.batch_size,
         worker_count=scrapper_settings.worker_count,
+        llm_client=llm_client,
     )
 
     application.state.repository = repository

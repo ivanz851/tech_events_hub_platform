@@ -49,6 +49,10 @@ class ScrapperSettings(BaseSettings):
 
     validation_timeout_seconds: float = Field(default=5.0)
 
+    yandex_api_key: str = Field(default="")
+    yandex_folder_id: str = Field(default="")
+    yandex_model: str = Field(default="yandexgpt-5.1/latest")
+
     metrics_port: int = Field(default=9001)
 
     @field_validator("retry_on_codes", mode="before")
