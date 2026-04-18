@@ -10,9 +10,12 @@
 *.log
 *.lot
 *.out
-*.pdf
 *.run.xml
 *.synctex.gz
 *.toc
 *.xdv
 _minted*
+
+*.pdf
+!final_report/title_page.pdf
+!final_report/main.pdf
