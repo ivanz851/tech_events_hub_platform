@@ -4,6 +4,7 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import redis.asyncio as aioredis
 import uvicorn
 from fastapi import FastAPI
 from prometheus_client import start_http_server
@@ -12,6 +13,8 @@ from telethon import TelegramClient
 from src.resilience.circuit_breaker import CircuitBreaker
 from src.resilience.rate_limiter import RateLimitMiddleware
 from src.scrapper.api import router
+from src.scrapper.auth.linking_cache import RedisLinkingCache
+from src.scrapper.auth.yandex_client import YandexOAuthClient
 from src.scrapper.clients.bot import BotClient
 from src.scrapper.db.engine import create_engine, create_session_factory
 from src.scrapper.kafka.producer import KafkaProducerClient
@@ -98,6 +101,25 @@ def _build_notification(
     return http_service
 
 
+def _build_yandex_oauth_client(settings: ScrapperSettings) -> YandexOAuthClient:
+    cb = CircuitBreaker(
+        sliding_window_size=settings.cb_sliding_window_size,
+        min_calls=settings.cb_min_calls,
+        failure_rate_threshold=settings.cb_failure_rate_threshold,
+        wait_duration_seconds=settings.cb_wait_duration_seconds,
+        permitted_calls_in_half_open=settings.cb_permitted_calls_in_half_open,
+    )
+    return YandexOAuthClient(
+        client_id=settings.yandex_client_id,
+        client_secret=settings.yandex_client_secret,
+        redirect_uri=settings.yandex_redirect_uri,
+        circuit_breaker=cb,
+        retry_count=settings.retry_count,
+        retry_backoff_seconds=settings.retry_backoff_seconds,
+        retry_on_codes={429, 500, 502, 503},
+    )
+
+
 @asynccontextmanager
 async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
     scrapper_settings = ScrapperSettings()  # type: ignore[call-arg]
@@ -138,6 +160,7 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
     llm_client = _build_llm_client(scrapper_settings)
     if llm_client is not None:
         logger.info("YandexGPT LLM client initialized")
+
     scheduler = Scheduler(
         repository=repository,
         notification=notification,
@@ -149,8 +172,16 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
         llm_client=llm_client,
     )
 
+    redis_client = aioredis.from_url(scrapper_settings.redis_url, decode_responses=False)
+    linking_cache = RedisLinkingCache(redis_client)
+    yandex_oauth_client = _build_yandex_oauth_client(scrapper_settings)
+
     application.state.repository = repository
     application.state.strategy_factory = strategy_factory
+    application.state.jwt_secret = scrapper_settings.jwt_secret
+    application.state.jwt_expire_minutes = scrapper_settings.jwt_expire_minutes
+    application.state.linking_cache = linking_cache
+    application.state.yandex_oauth_client = yandex_oauth_client
 
     task = asyncio.create_task(scheduler.run())
     logger.info("Scrapper started")
@@ -158,6 +189,7 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
     task.cancel()
     if kafka_producer is not None:
         await kafka_producer.stop()
+    await redis_client.aclose()
     await tg_client.disconnect()
     logger.info("Scrapper stopped")
 

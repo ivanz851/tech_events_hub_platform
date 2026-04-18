@@ -62,13 +62,13 @@ def test_add_link_duplicate_returns_409(scrapper_test_client: TestClient, chat_i
     assert resp.status_code == HTTPStatus.CONFLICT
 
 
-def test_add_link_unknown_chat_returns_404(scrapper_test_client: TestClient) -> None:
+def test_add_link_for_new_tg_chat_auto_creates_user(scrapper_test_client: TestClient) -> None:
     resp = scrapper_test_client.post(
         "/links",
         headers={"Tg-Chat-Id": "9999"},
         json={"link": "https://t.me/ch", "tags": [], "filters": []},
     )
-    assert resp.status_code == HTTPStatus.NOT_FOUND
+    assert resp.status_code == HTTPStatus.OK
 
 
 def test_get_links(scrapper_test_client: TestClient, chat_id: int) -> None:

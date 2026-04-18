@@ -82,8 +82,17 @@ def scrapper_repository() -> InMemoryLinkRepository:
 
 @pytest.fixture
 def scrapper_app(scrapper_repository: InMemoryLinkRepository) -> FastAPI:
+    from unittest.mock import MagicMock
+
+    from src.scrapper.auth.linking_cache import InMemoryLinkingCache
+    from src.scrapper.auth.yandex_client import YandexOAuthClient
+
     app = FastAPI(title="scrapper_app")
     app.state.repository = scrapper_repository
+    app.state.jwt_secret = "test-secret"
+    app.state.jwt_expire_minutes = 60
+    app.state.linking_cache = InMemoryLinkingCache()
+    app.state.yandex_oauth_client = MagicMock(spec=YandexOAuthClient)
     app.include_router(router=scrapper_router)
     return app
 

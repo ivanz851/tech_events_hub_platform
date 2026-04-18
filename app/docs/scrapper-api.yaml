@@ -1,14 +1,85 @@
 openapi: 3.1.0
 info:
   title: Scrapper API
-  version: 1.0.0
+  version: 2.0.0
   contact:
     name: Ivan Zakharov
     url: https://github.com
+security:
+  - BearerAuth: []
+  - TgChatId: []
 paths:
+  /auth/yandex/login:
+    get:
+      summary: Редирект на страницу авторизации Яндекса
+      security: []
+      responses:
+        '302':
+          description: Редирект на OAuth-страницу Яндекса
+  /auth/yandex/callback:
+    get:
+      summary: Обмен кода на JWT
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Успешная авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Некорректный код авторизации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /auth/telegram/link-token:
+    post:
+      summary: Генерация токена для связывания Telegram-аккаунта
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Токен создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkTokenResponse'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /auth/telegram/link:
+    post:
+      summary: Привязка Telegram-аккаунта к Web-аккаунту
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkTelegramRequest'
+      responses:
+        '200':
+          description: Аккаунты успешно связаны
+        '400':
+          description: Неверный или истёкший токен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /tg-chat/{id}:
     post:
       summary: Зарегистрировать чат
+      security: []
       parameters:
         - name: id
           in: path
@@ -33,6 +104,7 @@ paths:
                 $ref: '#/components/schemas/ApiErrorResponse'
     delete:
       summary: Удалить чат
+      security: []
       parameters:
         - name: id
           in: path
@@ -58,10 +130,13 @@ paths:
   /links:
     get:
       summary: Получить все отслеживаемые ссылки
+      security:
+        - BearerAuth: []
+        - TgChatId: []
       parameters:
         - name: Tg-Chat-Id
           in: header
-          required: true
+          required: false
           schema:
             type: integer
             format: int64
@@ -78,18 +153,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
-        '404':
-          description: Чат не существует
+        '401':
+          description: Не авторизован
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
     post:
       summary: Добавить отслеживание ссылки
+      security:
+        - BearerAuth: []
+        - TgChatId: []
       parameters:
         - name: Tg-Chat-Id
           in: header
-          required: true
+          required: false
           schema:
             type: integer
             format: int64
@@ -112,8 +190,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
-        '404':
-          description: Чат не существует
+        '401':
+          description: Не авторизован
           content:
             application/json:
               schema:
@@ -126,10 +204,13 @@ paths:
                 $ref: '#/components/schemas/ApiErrorResponse'
     delete:
       summary: Убрать отслеживание ссылки
+      security:
+        - BearerAuth: []
+        - TgChatId: []
       parameters:
         - name: Tg-Chat-Id
           in: header
-          required: true
+          required: false
           schema:
             type: integer
             format: int64
@@ -152,14 +233,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
         '404':
-          description: Чат не существует или ссылка не найдена
+          description: Ссылка не найдена
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    TgChatId:
+      type: apiKey
+      in: header
+      name: Tg-Chat-Id
   schemas:
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+    LinkTokenResponse:
+      type: object
+      properties:
+        link_token:
+          type: string
+    LinkTelegramRequest:
+      type: object
+      required:
+        - link_token
+        - tg_chat_id
+      properties:
+        link_token:
+          type: string
+        tg_chat_id:
+          type: integer
+          format: int64
     LinkResponse:
       type: object
       properties:

@@ -53,6 +53,15 @@ class ScrapperSettings(BaseSettings):
     yandex_folder_id: str = Field(default="")
     yandex_model: str = Field(default="yandexgpt-5.1/latest")
 
+    jwt_secret: str = Field(default="change-me-in-production")
+    jwt_expire_minutes: int = Field(default=1440)
+
+    yandex_client_id: str = Field(default="")
+    yandex_client_secret: str = Field(default="")
+    yandex_redirect_uri: str = Field(default="http://localhost:8080/auth/yandex/callback")
+
+    redis_url: str = Field(default="redis://localhost:6379/1")
+
     metrics_port: int = Field(default=9001)
 
     @field_validator("retry_on_codes", mode="before")
