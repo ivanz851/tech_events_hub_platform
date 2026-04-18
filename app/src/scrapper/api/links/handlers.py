@@ -1,4 +1,5 @@
 import logging
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Header, Request, status
 from fastapi.responses import JSONResponse
@@ -12,6 +13,10 @@ from src.scrapper.api.schemas import (
     RemoveLinkRequest,
 )
 from src.scrapper.repository.abstract import AbstractLinkRepository
+from src.scrapper.strategies.abstract import LinkValidationError
+
+if TYPE_CHECKING:
+    from src.scrapper.strategies.factory import StrategyFactory
 
 __all__ = ("router",)
 
@@ -60,6 +65,20 @@ async def add_link(
             exceptionMessage=f"Chat {tg_chat_id} not found",
         )
         return JSONResponse(status_code=404, content=error.model_dump())
+
+    strategy_factory: StrategyFactory | None = getattr(request.app.state, "strategy_factory", None)
+    if strategy_factory is not None:
+        strategy = strategy_factory.get(body.link)
+        try:
+            await strategy.validate(body.link)
+        except LinkValidationError as exc:
+            error = ApiErrorResponse(
+                description="Link validation failed",
+                code="422",
+                exceptionName="LinkValidationError",
+                exceptionMessage=exc.reason,
+            )
+            return JSONResponse(status_code=422, content=error.model_dump())
 
     record = await repository.add_link(tg_chat_id, body.link, body.tags, body.filters)
     if record is None:

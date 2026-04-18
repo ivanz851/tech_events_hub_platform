@@ -12,7 +12,13 @@ from src.resilience.retry import with_retry
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
 
-__all__ = ("LinkResponse", "ScrapperClient", "ScrapperClientError", "LinkAlreadyTrackedError")
+__all__ = (
+    "LinkResponse",
+    "ScrapperClient",
+    "ScrapperClientError",
+    "LinkAlreadyTrackedError",
+    "LinkValidationError",
+)
 
 _T = TypeVar("_T")
 
@@ -34,6 +40,10 @@ class ScrapperClientError(Exception):
 
 
 class LinkAlreadyTrackedError(ScrapperClientError):
+    pass
+
+
+class LinkValidationError(ScrapperClientError):
     pass
 
 
@@ -148,6 +158,11 @@ class ScrapperClient:
                     )
                     if resp.status_code == HTTPStatus.CONFLICT:
                         raise LinkAlreadyTrackedError(HTTPStatus.CONFLICT, "Link already tracked")
+                    if resp.status_code == HTTPStatus.UNPROCESSABLE_ENTITY:
+                        raise LinkValidationError(
+                            HTTPStatus.UNPROCESSABLE_ENTITY,
+                            "Link validation failed",
+                        )
                     if resp.status_code != HTTPStatus.OK:
                         raise ScrapperClientError(resp.status_code, resp.text)
                     data = resp.json()

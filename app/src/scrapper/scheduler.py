@@ -1,12 +1,19 @@
+from __future__ import annotations
 import asyncio
+import hashlib
 import logging
 import time
+from typing import TYPE_CHECKING
 
 from src.metrics import detect_link_type, scrapper_scrape_duration_seconds
 from src.scrapper.models import EventData, TrackedLink
 from src.scrapper.notification.abstract import AbstractNotificationService, NotificationError
-from src.scrapper.repository.abstract import AbstractLinkRepository
-from src.scrapper.telegram_scrapper import TelegramChannelScrapper
+from src.scrapper.strategies.abstract import LinkValidationError
+
+if TYPE_CHECKING:
+    from src.scrapper.repository.abstract import AbstractLinkRepository
+    from src.scrapper.strategies.web import WebScrapperStrategy
+    from src.scrapper.telegram_scrapper import TelegramChannelScrapper
 
 __all__ = ("Scheduler",)
 
@@ -19,6 +26,7 @@ class Scheduler:
         repository: AbstractLinkRepository,
         notification: AbstractNotificationService,
         tg_scrapper: TelegramChannelScrapper,
+        web_strategy: WebScrapperStrategy | None = None,
         interval_seconds: int = 10,
         batch_size: int = 100,
         worker_count: int = 4,
@@ -26,11 +34,13 @@ class Scheduler:
         self._repository = repository
         self._notification = notification
         self._tg_scrapper = tg_scrapper
+        self._web_strategy = web_strategy
         self._interval = interval_seconds
         self._batch_size = batch_size
         self._worker_count = worker_count
         self._update_counter: int = 0
         self._last_message_ids: dict[str, int] = {}
+        self._last_content_hashes: dict[str, str] = {}
 
     async def run(self) -> None:
         logger.info("Scheduler started", extra={"interval": self._interval})
@@ -68,6 +78,12 @@ class Scheduler:
             )
 
     async def _process_url_inner(self, tracked: TrackedLink) -> None:
+        if detect_link_type(tracked.url) == "telegram":
+            await self._process_telegram_url(tracked)
+        elif self._web_strategy is not None:
+            await self._process_web_url(tracked, self._web_strategy)
+
+    async def _process_telegram_url(self, tracked: TrackedLink) -> None:
         url = tracked.url
         if url not in self._last_message_ids:
             await self._initialize_baseline(url)
@@ -87,6 +103,34 @@ class Scheduler:
         logger.info("New content detected", extra={"url": url, "new_posts": len(new_messages)})
 
         event = _extract_event_data(new_messages[0].text if new_messages else None)
+        await self._repository.save_event_data(tracked.link_id, event)
+        await self._notify(url, tracked.chat_ids, event)
+
+    async def _process_web_url(
+        self,
+        tracked: TrackedLink,
+        web_strategy: WebScrapperStrategy,
+    ) -> None:
+        url = tracked.url
+        try:
+            content = await web_strategy.fetch_content(url)
+        except LinkValidationError:
+            logger.exception("Failed to fetch web content", extra={"url": url})
+            return
+
+        current_hash = hashlib.sha256(content.encode()).hexdigest()
+        if url not in self._last_content_hashes:
+            self._last_content_hashes[url] = current_hash
+            logger.info("Web baseline set", extra={"url": url})
+            return
+
+        if self._last_content_hashes[url] == current_hash:
+            return
+
+        self._last_content_hashes[url] = current_hash
+        self._update_counter += 1
+        logger.info("Web content changed", extra={"url": url})
+        event = EventData(summary=f"Страница обновилась: {url}")
         await self._repository.save_event_data(tracked.link_id, event)
         await self._notify(url, tracked.chat_ids, event)
 
