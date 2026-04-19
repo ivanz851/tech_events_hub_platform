@@ -4,6 +4,7 @@ import pytest
 
 from src.clients.scrapper import LinkResponse, ScrapperClientError
 from src.handlers.list_links import make_list_handler
+from src.scrapper.models import SubscriptionFilters
 
 
 @pytest.fixture
@@ -35,8 +36,12 @@ async def test_list_empty(mock_event: AsyncMock, scrapper: AsyncMock) -> None:
 async def test_list_with_links(mock_event: AsyncMock, scrapper: AsyncMock) -> None:
     scrapper.get_links = AsyncMock(
         return_value=[
-            LinkResponse(id=1, url="https://t.me/ch1", tags=["python"], filters=[]),
-            LinkResponse(id=2, url="https://t.me/ch2", tags=[], filters=[]),
+            LinkResponse(
+                id=1,
+                url="https://t.me/ch1",
+                filters=SubscriptionFilters(categories=["python"]),
+            ),
+            LinkResponse(id=2, url="https://t.me/ch2"),
         ],
     )
     handler = make_list_handler(scrapper)

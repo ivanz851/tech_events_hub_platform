@@ -1,21 +1,50 @@
+from __future__ import annotations
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Literal
 
-__all__ = ("LinkRecord", "TrackedLink", "EventData")
+from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from datetime import date
+    from uuid import UUID
+
+__all__ = (
+    "LinkRecord",
+    "TrackedLink",
+    "EventData",
+    "SubscriptionFilters",
+    "SubscriberDTO",
+)
+
+
+class SubscriptionFilters(BaseModel):
+    city: str | None = None
+    date_from: date | None = None
+    date_to: date | None = None
+    is_free: bool | None = None
+    categories: list[str] = []
+    format: Literal["offline", "online", "hybrid"] | None = None
+
+
+@dataclass
+class SubscriberDTO:
+    user_id: UUID
+    tg_chat_id: int | None
+    filters: SubscriptionFilters | None
 
 
 @dataclass
 class LinkRecord:
     id: int
     url: str
-    tags: list[str] = field(default_factory=list)
-    filters: list[str] = field(default_factory=list)
+    filters: SubscriptionFilters | None = None
 
 
 @dataclass
 class TrackedLink:
     link_id: int
     url: str
-    chat_ids: list[int]
+    subscribers: list[SubscriberDTO]
 
 
 @dataclass

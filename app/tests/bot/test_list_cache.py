@@ -8,8 +8,8 @@ from src.handlers.list_links import make_list_handler
 from tests.bot.conftest import skip_without_docker
 
 _LINKS = [
-    LinkResponse(id=1, url="https://t.me/ch1", tags=["python"], filters=[]),
-    LinkResponse(id=2, url="https://t.me/ch2", tags=[], filters=[]),
+    LinkResponse(id=1, url="https://t.me/ch1", filters=None),
+    LinkResponse(id=2, url="https://t.me/ch2", filters=None),
 ]
 
 

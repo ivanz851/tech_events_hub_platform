@@ -64,7 +64,7 @@ def test_add_link_unavailable_url_returns_422(client_invalid: TestClient, chat_i
     resp = client_invalid.post(
         "/links",
         headers={"Tg-Chat-Id": str(chat_id)},
-        json={"link": "https://bad.example.com", "tags": [], "filters": []},
+        json={"link": "https://bad.example.com"},
     )
     assert resp.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     data = resp.json()
@@ -75,7 +75,7 @@ def test_add_link_unavailable_url_not_saved_to_db(client_invalid: TestClient, ch
     client_invalid.post(
         "/links",
         headers={"Tg-Chat-Id": str(chat_id)},
-        json={"link": "https://bad.example.com", "tags": [], "filters": []},
+        json={"link": "https://bad.example.com"},
     )
     links_resp = client_invalid.get("/links", headers={"Tg-Chat-Id": str(chat_id)})
     assert links_resp.json()["size"] == 0
@@ -85,7 +85,7 @@ def test_add_link_valid_url_returns_200(client_valid: TestClient, chat_id: int) 
     resp = client_valid.post(
         "/links",
         headers={"Tg-Chat-Id": str(chat_id)},
-        json={"link": "https://example.com", "tags": [], "filters": []},
+        json={"link": "https://example.com"},
     )
     assert resp.status_code == HTTPStatus.OK
     assert resp.json()["url"] == "https://example.com"
@@ -95,7 +95,7 @@ def test_add_link_valid_url_saved_to_db(client_valid: TestClient, chat_id: int) 
     client_valid.post(
         "/links",
         headers={"Tg-Chat-Id": str(chat_id)},
-        json={"link": "https://example.com", "tags": [], "filters": []},
+        json={"link": "https://example.com"},
     )
     links_resp = client_valid.get("/links", headers={"Tg-Chat-Id": str(chat_id)})
     assert links_resp.json()["size"] == 1
@@ -109,6 +109,6 @@ def test_add_link_no_factory_skips_validation(chat_id: int) -> None:
         resp = client.post(
             "/links",
             headers={"Tg-Chat-Id": str(chat_id)},
-            json={"link": "https://t.me/ch", "tags": [], "filters": []},
+            json={"link": "https://t.me/ch"},
         )
     assert resp.status_code == HTTPStatus.OK

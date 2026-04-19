@@ -50,8 +50,9 @@ def make_list_handler(
         lines = ["Отслеживаемые ресурсы:"]
         for link in links:
             line = f"• {link.url}"
-            if link.tags:
-                line += f" [теги: {', '.join(link.tags)}]"
+            categories = link.filters.categories if link.filters else []
+            if categories:
+                line += f" [категории: {', '.join(categories)}]"
             lines.append(line)
 
         await event.respond("\n".join(lines))

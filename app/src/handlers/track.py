@@ -11,6 +11,7 @@ from src.clients.scrapper import (
     ScrapperClientError,
 )
 from src.handlers.untrack import _do_untrack
+from src.scrapper.models import SubscriptionFilters
 from src.state.track import TrackState, TrackStateStore, TrackStep
 
 __all__ = ("make_track_command_handler", "make_track_message_handler")
@@ -98,13 +99,15 @@ async def _handle_filters_input(
     scrapper: ScrapperClient,
     cache: ListCache | None = None,
 ) -> None:
-    tags = [] if text == "/skip" else [t.strip() for t in text.split() if t.strip()]
+    categories = [] if text == "/skip" else [t.strip() for t in text.split() if t.strip()]
+    filters = SubscriptionFilters(categories=categories) if categories else None
     state_store.clear(chat_id)
     try:
-        result = await scrapper.add_link(chat_id, state.url, tags=tags, filters=[])
+        result = await scrapper.add_link(chat_id, state.url, filters=filters)
         if cache is not None:
             await cache.invalidate(chat_id)
-        tag_info = f" [теги: {', '.join(result.tags)}]" if result.tags else ""
+        saved_categories = result.filters.categories if result.filters else []
+        tag_info = f" [категории: {', '.join(saved_categories)}]" if saved_categories else ""
         await event.respond(f"Ссылка добавлена: {result.url}{tag_info}")
     except LinkValidationError:
         await event.respond(_MSG_VALIDATION_ERROR)

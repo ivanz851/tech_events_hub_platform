@@ -10,6 +10,7 @@ from src.clients.scrapper import (
     ScrapperClient,
     ScrapperClientError,
 )
+from src.scrapper.models import SubscriptionFilters
 
 BASE_URL = "http://scrapper-test"
 
@@ -24,7 +25,6 @@ def _make_http_mock(
     json_body: dict[str, Any] | None = None,
     text: str = "",
 ) -> AsyncMock:
-    """Helper: returns an AsyncClient mock whose methods return a given response."""
     response = MagicMock(spec=httpx.Response)
     response.status_code = status_code
     response.text = text
@@ -70,7 +70,7 @@ async def test_register_chat_server_error(client: ScrapperClient) -> None:
 @pytest.mark.asyncio
 async def test_get_links_success(client: ScrapperClient) -> None:
     body = {
-        "links": [{"id": 1, "url": "https://t.me/ch", "tags": ["py"], "filters": []}],
+        "links": [{"id": 1, "url": "https://t.me/ch", "filters": {"categories": ["py"]}}],
         "size": 1,
     }
     mock_http = _make_http_mock(HTTPStatus.OK, json_body=body)
@@ -78,7 +78,8 @@ async def test_get_links_success(client: ScrapperClient) -> None:
         links = await client.get_links(chat_id=1)
     assert len(links) == 1
     assert links[0].url == "https://t.me/ch"
-    assert links[0].tags == ["py"]
+    assert links[0].filters is not None
+    assert links[0].filters.categories == ["py"]
 
 
 @pytest.mark.asyncio
@@ -94,12 +95,13 @@ async def test_get_links_error(client: ScrapperClient) -> None:
 
 @pytest.mark.asyncio
 async def test_add_link_success(client: ScrapperClient) -> None:
-    body = {"id": 1, "url": "https://t.me/ch", "tags": ["py"], "filters": []}
+    body = {"id": 1, "url": "https://t.me/ch", "filters": {"categories": ["py"]}}
     mock_http = _make_http_mock(HTTPStatus.OK, json_body=body)
     with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
-        result = await client.add_link(1, "https://t.me/ch", tags=["py"], filters=[])
+        result = await client.add_link(1, "https://t.me/ch", SubscriptionFilters(categories=["py"]))
     assert result.url == "https://t.me/ch"
-    assert result.tags == ["py"]
+    assert result.filters is not None
+    assert result.filters.categories == ["py"]
 
 
 @pytest.mark.asyncio
@@ -109,7 +111,7 @@ async def test_add_link_duplicate(client: ScrapperClient) -> None:
         patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http),
         pytest.raises(LinkAlreadyTrackedError),
     ):
-        await client.add_link(1, "https://t.me/ch", tags=[], filters=[])
+        await client.add_link(1, "https://t.me/ch")
 
 
 @pytest.mark.asyncio
@@ -119,13 +121,13 @@ async def test_add_link_invalid_body(client: ScrapperClient) -> None:
         patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http),
         pytest.raises(ScrapperClientError) as exc_info,
     ):
-        await client.add_link(1, "bad", tags=[], filters=[])
+        await client.add_link(1, "bad")
     assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
 
 
 @pytest.mark.asyncio
 async def test_remove_link_success(client: ScrapperClient) -> None:
-    body = {"id": 1, "url": "https://t.me/ch", "tags": [], "filters": []}
+    body = {"id": 1, "url": "https://t.me/ch", "filters": None}
     mock_http = _make_http_mock(HTTPStatus.OK, json_body=body)
     with patch("src.clients.scrapper.httpx.AsyncClient", return_value=mock_http):
         result = await client.remove_link(1, "https://t.me/ch")
@@ -178,7 +180,7 @@ async def test_add_link_connect_error(client: ScrapperClient) -> None:
         ),
         pytest.raises(ScrapperClientError) as exc_info,
     ):
-        await client.add_link(1, "https://t.me/ch", tags=[], filters=[])
+        await client.add_link(1, "https://t.me/ch")
     assert exc_info.value.status_code == 0
 
 

@@ -50,10 +50,10 @@ async def test_scheduler_notifies_only_subscribed_users(
     notification: AsyncMock,
 ) -> None:
     uid1, uid2 = user_ids
-    await repository.add_link(uid1, "https://t.me/url_a", [], [])
-    await repository.add_link(uid2, "https://t.me/url_b", [], [])
-    await repository.add_link(uid1, "https://t.me/url_c", [], [])
-    await repository.add_link(uid2, "https://t.me/url_c", [], [])
+    await repository.add_link(uid1, "https://t.me/url_a")
+    await repository.add_link(uid2, "https://t.me/url_b")
+    await repository.add_link(uid1, "https://t.me/url_c")
+    await repository.add_link(uid2, "https://t.me/url_c")
 
     scrapper = _make_scrapper([_make_message(100)])
     scheduler = Scheduler(repository, notification, scrapper, interval_seconds=9999)
@@ -82,7 +82,7 @@ async def test_scheduler_no_new_messages_no_notification(
     notification: AsyncMock,
 ) -> None:
     uid1, _ = user_ids
-    await repository.add_link(uid1, "https://t.me/ch", [], [])
+    await repository.add_link(uid1, "https://t.me/ch")
     scrapper = _make_scrapper([_make_message(10)])
     scheduler = Scheduler(repository, notification, scrapper, interval_seconds=9999)
 
@@ -112,7 +112,7 @@ async def test_scheduler_notification_error_does_not_crash(
     notification: AsyncMock,
 ) -> None:
     uid1, _ = user_ids
-    await repository.add_link(uid1, "https://t.me/ch", [], [])
+    await repository.add_link(uid1, "https://t.me/ch")
     notification.send_update = AsyncMock(side_effect=NotificationError("server error"))
 
     scrapper = _make_scrapper([_make_message(10)])
@@ -130,7 +130,7 @@ async def test_scheduler_does_not_notify_same_message_twice(
     notification: AsyncMock,
 ) -> None:
     uid1, _ = user_ids
-    await repository.add_link(uid1, "https://t.me/ch", [], [])
+    await repository.add_link(uid1, "https://t.me/ch")
     notification.send_update = AsyncMock()
 
     scrapper = _make_scrapper([_make_message(10)])

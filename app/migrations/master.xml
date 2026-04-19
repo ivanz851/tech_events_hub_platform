@@ -9,5 +9,6 @@
 
     <include relativeToChangelogFile="true" file="00-initial-schema.sql"/>
     <include relativeToChangelogFile="true" file="01-identity-schema.sql"/>
+    <include relativeToChangelogFile="true" file="02-subscription-filters.sql"/>
 
 </databaseChangeLog>

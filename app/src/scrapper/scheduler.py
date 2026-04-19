@@ -6,6 +6,7 @@ import time
 from typing import TYPE_CHECKING
 
 from src.metrics import detect_link_type, scrapper_scrape_duration_seconds
+from src.scrapper.filters import match_filters
 from src.scrapper.models import EventData, TrackedLink
 from src.scrapper.notification.abstract import AbstractNotificationService, NotificationError
 from src.scrapper.strategies.abstract import LinkValidationError
@@ -111,7 +112,9 @@ class Scheduler:
             logger.info("Not an IT event, skipping notification", extra={"url": url})
             return
         await self._repository.save_event_data(tracked.link_id, event)
-        await self._notify(url, tracked.chat_ids, event)
+        matched = _matched_chat_ids(tracked, event)
+        if matched:
+            await self._notify(url, matched, event)
 
     async def _process_web_url(
         self,
@@ -143,7 +146,9 @@ class Scheduler:
             logger.info("Not an IT event, skipping notification", extra={"url": url})
             return
         await self._repository.save_event_data(tracked.link_id, event)
-        await self._notify(url, tracked.chat_ids, event)
+        matched = _matched_chat_ids(tracked, event)
+        if matched:
+            await self._notify(url, matched, event)
 
     async def _analyze_content(
         self,
@@ -178,6 +183,14 @@ class Scheduler:
             logger.info("Notification sent", extra={"url": url, "recipients": len(chat_ids)})
         except NotificationError as exc:
             logger.exception("Failed to notify bot", extra={"url": url, "error": str(exc)})
+
+
+def _matched_chat_ids(tracked: TrackedLink, event: EventData) -> list[int]:
+    return [
+        sub.tg_chat_id
+        for sub in tracked.subscribers
+        if sub.tg_chat_id is not None and match_filters(event, sub.filters)
+    ]
 
 
 def _llm_result_to_event_data(result: LLMEventResult) -> EventData:

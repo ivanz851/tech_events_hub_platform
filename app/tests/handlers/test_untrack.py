@@ -33,7 +33,7 @@ async def test_untrack_happy_path(
 ) -> None:
     mock_event.raw_text = "/untrack https://t.me/ch"
     scrapper.remove_link = AsyncMock(
-        return_value=LinkResponse(id=1, url="https://t.me/ch", tags=[], filters=[]),
+        return_value=LinkResponse(id=1, url="https://t.me/ch"),
     )
     handler = make_untrack_handler(scrapper, state_store)
 
@@ -110,7 +110,7 @@ async def test_untrack_clears_state_after_success(
 ) -> None:
     mock_event.raw_text = "/untrack https://t.me/ch"
     scrapper.remove_link = AsyncMock(
-        return_value=LinkResponse(id=1, url="https://t.me/ch", tags=[], filters=[]),
+        return_value=LinkResponse(id=1, url="https://t.me/ch"),
     )
     handler = make_untrack_handler(scrapper, state_store)
 

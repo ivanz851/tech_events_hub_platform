@@ -277,6 +277,31 @@ components:
         tg_chat_id:
           type: integer
           format: int64
+    SubscriptionFilters:
+      type: object
+      properties:
+        city:
+          type: string
+          nullable: true
+        date_from:
+          type: string
+          format: date
+          nullable: true
+        date_to:
+          type: string
+          format: date
+          nullable: true
+        is_free:
+          type: boolean
+          nullable: true
+        categories:
+          type: array
+          items:
+            type: string
+        format:
+          type: string
+          enum: [offline, online, hybrid]
+          nullable: true
     LinkResponse:
       type: object
       properties:
@@ -286,14 +311,9 @@ components:
         url:
           type: string
           format: uri
-        tags:
-          type: array
-          items:
-            type: string
         filters:
-          type: array
-          items:
-            type: string
+          $ref: '#/components/schemas/SubscriptionFilters'
+          nullable: true
     ApiErrorResponse:
       type: object
       properties:
@@ -311,18 +331,15 @@ components:
             type: string
     AddLinkRequest:
       type: object
+      required:
+        - link
       properties:
         link:
           type: string
           format: uri
-        tags:
-          type: array
-          items:
-            type: string
         filters:
-          type: array
-          items:
-            type: string
+          $ref: '#/components/schemas/SubscriptionFilters'
+          nullable: true
     ListLinksResponse:
       type: object
       properties:

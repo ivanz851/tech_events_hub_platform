@@ -8,6 +8,7 @@ import httpx
 
 from src.resilience.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
 from src.resilience.retry import with_retry
+from src.scrapper.models import SubscriptionFilters
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
@@ -29,8 +30,7 @@ logger = logging.getLogger(__name__)
 class LinkResponse:
     id: int
     url: str
-    tags: list[str]
-    filters: list[str]
+    filters: SubscriptionFilters | None = None
 
 
 class ScrapperClientError(Exception):
@@ -130,8 +130,11 @@ class ScrapperClient:
                 LinkResponse(
                     id=item["id"],
                     url=item["url"],
-                    tags=item.get("tags", []),
-                    filters=item.get("filters", []),
+                    filters=(
+                        SubscriptionFilters.model_validate(item["filters"])
+                        if item.get("filters")
+                        else None
+                    ),
                 )
                 for item in data.get("links", [])
             ]
@@ -142,10 +145,10 @@ class ScrapperClient:
         self,
         chat_id: int,
         link: str,
-        tags: list[str],
-        filters: list[str],
+        filters: SubscriptionFilters | None = None,
     ) -> LinkResponse:
         async def _call() -> LinkResponse:
+            filters_dict = filters.model_dump(mode="json", exclude_none=True) if filters else None
             try:
                 async with httpx.AsyncClient(
                     base_url=self._base_url,
@@ -154,7 +157,7 @@ class ScrapperClient:
                     resp = await client.post(
                         "/links",
                         headers={"Tg-Chat-Id": str(chat_id)},
-                        json={"link": link, "tags": tags, "filters": filters},
+                        json={"link": link, "filters": filters_dict},
                     )
                     if resp.status_code == HTTPStatus.CONFLICT:
                         raise LinkAlreadyTrackedError(HTTPStatus.CONFLICT, "Link already tracked")
@@ -171,8 +174,11 @@ class ScrapperClient:
             return LinkResponse(
                 id=data["id"],
                 url=data["url"],
-                tags=data.get("tags", []),
-                filters=data.get("filters", []),
+                filters=(
+                    SubscriptionFilters.model_validate(data["filters"])
+                    if data.get("filters")
+                    else None
+                ),
             )
 
         result = await self._execute(_call)
@@ -221,8 +227,11 @@ class ScrapperClient:
             return LinkResponse(
                 id=data["id"],
                 url=data["url"],
-                tags=data.get("tags", []),
-                filters=data.get("filters", []),
+                filters=(
+                    SubscriptionFilters.model_validate(data["filters"])
+                    if data.get("filters")
+                    else None
+                ),
             )
 
         result = await self._execute(_call)

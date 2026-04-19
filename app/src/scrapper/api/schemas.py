@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from src.scrapper.models import SubscriptionFilters
+
 __all__ = (
     "AddLinkRequest",
     "RemoveLinkRequest",
@@ -19,8 +21,7 @@ class ApiErrorResponse(BaseModel):
 
 class AddLinkRequest(BaseModel):
     link: str
-    tags: list[str] = []
-    filters: list[str] = []
+    filters: SubscriptionFilters | None = None
 
 
 class RemoveLinkRequest(BaseModel):
@@ -30,8 +31,7 @@ class RemoveLinkRequest(BaseModel):
 class LinkResponse(BaseModel):
     id: int
     url: str
-    tags: list[str] = []
-    filters: list[str] = []
+    filters: SubscriptionFilters | None = None
 
 
 class ListLinksResponse(BaseModel):
