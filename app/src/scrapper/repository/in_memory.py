@@ -1,7 +1,14 @@
+from __future__ import annotations
 import uuid
 from uuid import UUID
 
-from src.scrapper.models import EventData, LinkRecord, TrackedLink
+from src.scrapper.models import (
+    EventData,
+    LinkRecord,
+    SubscriberDTO,
+    SubscriptionFilters,
+    TrackedLink,
+)
 from src.scrapper.repository.abstract import AbstractLinkRepository
 
 __all__ = ("InMemoryLinkRepository",)
@@ -70,15 +77,14 @@ class InMemoryLinkRepository(AbstractLinkRepository):
         self,
         user_id: UUID,
         url: str,
-        tags: list[str],
-        filters: list[str],
+        filters: SubscriptionFilters | None = None,
     ) -> LinkRecord | None:
         user_links = self._links.get(user_id)
         if user_links is None:
             return None
         if url in user_links:
             return None
-        record = LinkRecord(id=self._next_id, url=url, tags=tags, filters=filters)
+        record = LinkRecord(id=self._next_id, url=url, filters=filters)
         self._next_id += 1
         user_links[url] = record
         return record
@@ -90,19 +96,24 @@ class InMemoryLinkRepository(AbstractLinkRepository):
         return user_links.pop(url, None)
 
     async def get_tracked_links_page(self, offset: int, limit: int) -> list[TrackedLink]:
-        url_to_data: dict[str, list[int]] = {}
         url_to_id: dict[str, int] = {}
+        url_to_subscribers: dict[str, list[SubscriberDTO]] = {}
+
         for user_id, links in self._links.items():
             chat_id = self._user_to_telegram.get(user_id)
-            if chat_id is None:
-                continue
             for url, record in links.items():
-                url_to_data.setdefault(url, []).append(chat_id)
                 url_to_id[url] = record.id
+                url_to_subscribers.setdefault(url, []).append(
+                    SubscriberDTO(
+                        user_id=user_id,
+                        tg_chat_id=chat_id,
+                        filters=record.filters,
+                    ),
+                )
 
         all_entries = [
-            TrackedLink(link_id=url_to_id[url], url=url, chat_ids=chat_ids)
-            for url, chat_ids in sorted(url_to_data.items())
+            TrackedLink(link_id=url_to_id[url], url=url, subscribers=subs)
+            for url, subs in sorted(url_to_subscribers.items())
         ]
         return all_entries[offset : offset + limit]
 

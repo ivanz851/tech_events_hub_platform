@@ -26,7 +26,7 @@ async def _make_repo_with_link(chat_id: int, url: str) -> InMemoryLinkRepository
     repo = InMemoryLinkRepository()
     await repo.register_chat(chat_id)
     user_id = await repo.get_or_create_by_telegram(chat_id)
-    await repo.add_link(user_id, url, [], [])
+    await repo.add_link(user_id, url)
     return repo
 
 

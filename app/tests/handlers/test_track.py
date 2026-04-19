@@ -4,6 +4,7 @@ import pytest
 
 from src.clients.scrapper import LinkAlreadyTrackedError, LinkResponse, ScrapperClientError
 from src.handlers.track import make_track_command_handler, make_track_message_handler
+from src.scrapper.models import SubscriptionFilters
 from src.state.track import TrackState, TrackStateStore, TrackStep
 
 
@@ -107,8 +108,7 @@ async def test_track_filters_saved_and_link_added(
         return_value=LinkResponse(
             id=1,
             url="https://t.me/ch",
-            tags=["python", "backend"],
-            filters=[],
+            filters=SubscriptionFilters(categories=["python", "backend"]),
         ),
     )
     handler = make_track_message_handler(store, scrapper)
@@ -117,8 +117,7 @@ async def test_track_filters_saved_and_link_added(
     scrapper.add_link.assert_called_once_with(
         100500,
         "https://t.me/ch",
-        tags=["python", "backend"],
-        filters=[],
+        filters=SubscriptionFilters(categories=["python", "backend"]),
     )
     assert not store.has(100500)
     mock_event.respond.assert_called_once()
@@ -133,12 +132,12 @@ async def test_track_filters_skip(
     store.set(100500, TrackState(step=TrackStep.WAITING_FOR_FILTERS, url="https://t.me/ch"))
     mock_event.raw_text = "/skip"
     scrapper.add_link = AsyncMock(
-        return_value=LinkResponse(id=1, url="https://t.me/ch", tags=[], filters=[]),
+        return_value=LinkResponse(id=1, url="https://t.me/ch"),
     )
     handler = make_track_message_handler(store, scrapper)
     await handler(mock_event)
 
-    scrapper.add_link.assert_called_once_with(100500, "https://t.me/ch", tags=[], filters=[])
+    scrapper.add_link.assert_called_once_with(100500, "https://t.me/ch", filters=None)
 
 
 @pytest.mark.asyncio
@@ -184,7 +183,7 @@ async def test_untrack_two_step_flow(
     store.set(100500, TrackState(step=TrackStep.WAITING_FOR_UNTRACK_URL))
     mock_event.raw_text = "https://t.me/ch"
     scrapper.remove_link = AsyncMock(
-        return_value=LinkResponse(id=1, url="https://t.me/ch", tags=[], filters=[]),
+        return_value=LinkResponse(id=1, url="https://t.me/ch"),
     )
 
     handler = make_track_message_handler(store, scrapper)

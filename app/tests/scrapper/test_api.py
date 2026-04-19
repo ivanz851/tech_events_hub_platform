@@ -39,12 +39,24 @@ def test_add_link(scrapper_test_client: TestClient, chat_id: int) -> None:
     resp = scrapper_test_client.post(
         "/links",
         headers={"Tg-Chat-Id": str(chat_id)},
-        json={"link": "https://t.me/ch", "tags": ["py"], "filters": []},
+        json={"link": "https://t.me/ch", "filters": {"categories": ["py"]}},
     )
     assert resp.status_code == HTTPStatus.OK
     data = resp.json()
     assert data["url"] == "https://t.me/ch"
-    assert data["tags"] == ["py"]
+    assert data["filters"]["categories"] == ["py"]
+
+
+def test_add_link_without_filters(scrapper_test_client: TestClient, chat_id: int) -> None:
+    scrapper_test_client.post(f"/tg-chat/{chat_id}")
+    resp = scrapper_test_client.post(
+        "/links",
+        headers={"Tg-Chat-Id": str(chat_id)},
+        json={"link": "https://t.me/ch_nf"},
+    )
+    assert resp.status_code == HTTPStatus.OK
+    data = resp.json()
+    assert data["filters"] is None
 
 
 def test_add_link_duplicate_returns_409(scrapper_test_client: TestClient, chat_id: int) -> None:
@@ -52,12 +64,12 @@ def test_add_link_duplicate_returns_409(scrapper_test_client: TestClient, chat_i
     scrapper_test_client.post(
         "/links",
         headers={"Tg-Chat-Id": str(chat_id)},
-        json={"link": "https://t.me/ch", "tags": [], "filters": []},
+        json={"link": "https://t.me/ch_dup"},
     )
     resp = scrapper_test_client.post(
         "/links",
         headers={"Tg-Chat-Id": str(chat_id)},
-        json={"link": "https://t.me/ch", "tags": [], "filters": []},
+        json={"link": "https://t.me/ch_dup"},
     )
     assert resp.status_code == HTTPStatus.CONFLICT
 
@@ -66,7 +78,7 @@ def test_add_link_for_new_tg_chat_auto_creates_user(scrapper_test_client: TestCl
     resp = scrapper_test_client.post(
         "/links",
         headers={"Tg-Chat-Id": "9999"},
-        json={"link": "https://t.me/ch", "tags": [], "filters": []},
+        json={"link": "https://t.me/ch"},
     )
     assert resp.status_code == HTTPStatus.OK
 
@@ -76,12 +88,12 @@ def test_get_links(scrapper_test_client: TestClient, chat_id: int) -> None:
     scrapper_test_client.post(
         "/links",
         headers={"Tg-Chat-Id": str(chat_id)},
-        json={"link": "https://t.me/ch1", "tags": [], "filters": []},
+        json={"link": "https://t.me/ch1"},
     )
     scrapper_test_client.post(
         "/links",
         headers={"Tg-Chat-Id": str(chat_id)},
-        json={"link": "https://t.me/ch2", "tags": ["py"], "filters": []},
+        json={"link": "https://t.me/ch2", "filters": {"categories": ["py"]}},
     )
     resp = scrapper_test_client.get("/links", headers={"Tg-Chat-Id": str(chat_id)})
     assert resp.status_code == HTTPStatus.OK
@@ -94,17 +106,17 @@ def test_remove_link(scrapper_test_client: TestClient, chat_id: int) -> None:
     scrapper_test_client.post(
         "/links",
         headers={"Tg-Chat-Id": str(chat_id)},
-        json={"link": "https://t.me/ch", "tags": [], "filters": []},
+        json={"link": "https://t.me/ch_rm"},
     )
     resp = scrapper_test_client.request(
         "DELETE",
         "/links",
         headers={"Tg-Chat-Id": str(chat_id)},
-        json={"link": "https://t.me/ch"},
+        json={"link": "https://t.me/ch_rm"},
     )
     assert resp.status_code == HTTPStatus.OK
     data = resp.json()
-    assert data["url"] == "https://t.me/ch"
+    assert data["url"] == "https://t.me/ch_rm"
 
 
 def test_remove_nonexistent_link_returns_404(

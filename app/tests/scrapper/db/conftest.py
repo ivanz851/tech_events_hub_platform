@@ -16,6 +16,9 @@ from src.scrapper.settings import AccessType, ScrapperSettings
 _SCHEMA_FILES = [
     pathlib.Path(__file__).parent.parent.parent.parent / "migrations" / "00-initial-schema.sql",
     pathlib.Path(__file__).parent.parent.parent.parent / "migrations" / "01-identity-schema.sql",
+    pathlib.Path(__file__).parent.parent.parent.parent
+    / "migrations"
+    / "02-subscription-filters.sql",
 ]
 
 _PODMAN_BIN = "/opt/podman/bin/podman"

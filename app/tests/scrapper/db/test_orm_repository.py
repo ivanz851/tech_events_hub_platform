@@ -1,6 +1,6 @@
 import pytest
 
-from src.scrapper.models import EventData
+from src.scrapper.models import EventData, SubscriptionFilters
 from src.scrapper.repository.orm_repository import OrmLinkRepository
 from src.scrapper.server import _build_repository
 from src.scrapper.settings import ScrapperSettings
@@ -49,10 +49,12 @@ async def test_get_or_create_by_yandex(orm_repository: OrmLinkRepository) -> Non
 @pytest.mark.asyncio
 async def test_add_and_get_link(orm_repository: OrmLinkRepository) -> None:
     user_id = await orm_repository.get_or_create_by_telegram(10004)
-    record = await orm_repository.add_link(user_id, "https://t.me/orm_ch", ["py"], [])
+    filters = SubscriptionFilters(categories=["py"])
+    record = await orm_repository.add_link(user_id, "https://t.me/orm_ch", filters)
     assert record is not None
     assert record.url == "https://t.me/orm_ch"
-    assert record.tags == ["py"]
+    assert record.filters is not None
+    assert record.filters.categories == ["py"]
 
     links = await orm_repository.get_links(user_id)
     assert len(links) == 1
@@ -62,14 +64,14 @@ async def test_add_and_get_link(orm_repository: OrmLinkRepository) -> None:
 @pytest.mark.asyncio
 async def test_add_link_duplicate(orm_repository: OrmLinkRepository) -> None:
     user_id = await orm_repository.get_or_create_by_telegram(10005)
-    await orm_repository.add_link(user_id, "https://t.me/orm_dup", [], [])
-    assert await orm_repository.add_link(user_id, "https://t.me/orm_dup", [], []) is None
+    await orm_repository.add_link(user_id, "https://t.me/orm_dup")
+    assert await orm_repository.add_link(user_id, "https://t.me/orm_dup") is None
 
 
 @pytest.mark.asyncio
 async def test_remove_link(orm_repository: OrmLinkRepository) -> None:
     user_id = await orm_repository.get_or_create_by_telegram(10006)
-    await orm_repository.add_link(user_id, "https://t.me/orm_rm", [], [])
+    await orm_repository.add_link(user_id, "https://t.me/orm_rm")
     record = await orm_repository.remove_link(user_id, "https://t.me/orm_rm")
     assert record is not None
     assert record.url == "https://t.me/orm_rm"
@@ -86,19 +88,33 @@ async def test_remove_nonexistent_link(orm_repository: OrmLinkRepository) -> Non
 async def test_get_tracked_links_page(orm_repository: OrmLinkRepository) -> None:
     uid1 = await orm_repository.get_or_create_by_telegram(10008)
     uid2 = await orm_repository.get_or_create_by_telegram(10009)
-    await orm_repository.add_link(uid1, "https://t.me/shared_orm", [], [])
-    await orm_repository.add_link(uid2, "https://t.me/shared_orm", [], [])
+    await orm_repository.add_link(uid1, "https://t.me/shared_orm")
+    await orm_repository.add_link(uid2, "https://t.me/shared_orm")
 
     page = await orm_repository.get_tracked_links_page(0, 10)
     shared = next((t for t in page if t.url == "https://t.me/shared_orm"), None)
     assert shared is not None
-    assert set(shared.chat_ids) == {10008, 10009}
+    tg_ids = {sub.tg_chat_id for sub in shared.subscribers if sub.tg_chat_id is not None}
+    assert tg_ids == {10008, 10009}
+
+
+@pytest.mark.asyncio
+async def test_get_tracked_links_page_includes_filters(orm_repository: OrmLinkRepository) -> None:
+    uid = await orm_repository.get_or_create_by_telegram(10011)
+    await orm_repository.add_link(uid, "https://t.me/filt_orm", SubscriptionFilters(city="Moscow"))
+
+    page = await orm_repository.get_tracked_links_page(0, 10)
+    entry = next((t for t in page if t.url == "https://t.me/filt_orm"), None)
+    assert entry is not None
+    sub = next(s for s in entry.subscribers if s.tg_chat_id == 10011)
+    assert sub.filters is not None
+    assert sub.filters.city == "Moscow"
 
 
 @pytest.mark.asyncio
 async def test_save_event_data(orm_repository: OrmLinkRepository) -> None:
     user_id = await orm_repository.get_or_create_by_telegram(10010)
-    record = await orm_repository.add_link(user_id, "https://t.me/event_orm", [], [])
+    record = await orm_repository.add_link(user_id, "https://t.me/event_orm")
     assert record is not None
     event = EventData(title="Test Event", summary="A great event", tags=["Python"])
     await orm_repository.save_event_data(record.id, event)

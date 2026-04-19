@@ -38,7 +38,7 @@ async def get_links(
 ) -> JSONResponse:
     repository = _get_repository(request)
     records = await repository.get_links(user_id)
-    links = [LinkResponse(id=r.id, url=r.url, tags=r.tags, filters=r.filters) for r in records]
+    links = [LinkResponse(id=r.id, url=r.url, filters=r.filters) for r in records]
     response = ListLinksResponse(links=links, size=len(links))
     return JSONResponse(status_code=200, content=response.model_dump())
 
@@ -65,7 +65,7 @@ async def add_link(
             )
             return JSONResponse(status_code=422, content=error.model_dump())
 
-    record = await repository.add_link(user_id, body.link, body.tags, body.filters)
+    record = await repository.add_link(user_id, body.link, body.filters)
     if record is None:
         error = ApiErrorResponse(
             description="Link already tracked",
@@ -77,7 +77,7 @@ async def add_link(
 
     logger.info("Added link", extra={"user_id": str(user_id), "url": body.link})
     scrapper_active_links.labels(link_type=detect_link_type(body.link)).inc()
-    link = LinkResponse(id=record.id, url=record.url, tags=record.tags, filters=record.filters)
+    link = LinkResponse(id=record.id, url=record.url, filters=record.filters)
     return JSONResponse(status_code=200, content=link.model_dump())
 
 
@@ -100,5 +100,5 @@ async def remove_link(
 
     logger.info("Removed link", extra={"user_id": str(user_id), "url": body.link})
     scrapper_active_links.labels(link_type=detect_link_type(body.link)).dec()
-    link = LinkResponse(id=record.id, url=record.url, tags=record.tags, filters=record.filters)
+    link = LinkResponse(id=record.id, url=record.url, filters=record.filters)
     return JSONResponse(status_code=200, content=link.model_dump())

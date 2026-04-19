@@ -1,8 +1,9 @@
 from __future__ import annotations
 import uuid
+from typing import Any
 
 from sqlalchemy import ARRAY, BigInteger, Boolean, ForeignKey, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 __all__ = ("Base", "User", "UserIdentity", "UserSettings", "Link", "LinkUserMapping", "EventData")
@@ -98,8 +99,11 @@ class LinkUserMapping(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
     )
-    tags: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default="{}")
-    filters: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default="{}")
+    filters: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default="'{}'",
+    )
 
     link: Mapped[Link] = relationship("Link", back_populates="mappings")
     user: Mapped[User] = relationship("User", back_populates="mappings")

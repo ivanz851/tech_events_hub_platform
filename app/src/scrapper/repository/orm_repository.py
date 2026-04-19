@@ -1,14 +1,24 @@
+from __future__ import annotations
 import uuid
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from sqlalchemy import BigInteger, func, select
+from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.scrapper.db.models import EventData as EventDataModel
 from src.scrapper.db.models import Link, LinkUserMapping, User, UserIdentity, UserSettings
-from src.scrapper.models import EventData, LinkRecord, TrackedLink
+from src.scrapper.models import (
+    EventData,
+    LinkRecord,
+    SubscriberDTO,
+    SubscriptionFilters,
+    TrackedLink,
+)
 from src.scrapper.repository.abstract import AbstractLinkRepository
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 __all__ = ("OrmLinkRepository",)
 
@@ -117,8 +127,7 @@ class OrmLinkRepository(AbstractLinkRepository):
                 LinkRecord(
                     id=int(link.id),  # type: ignore[arg-type]
                     url=str(link.url),
-                    tags=list(mapping.tags or []),
-                    filters=list(mapping.filters or []),
+                    filters=_parse_filters(mapping.filters),
                 )
                 for link, mapping in rows
             ]
@@ -127,8 +136,7 @@ class OrmLinkRepository(AbstractLinkRepository):
         self,
         user_id: UUID,
         url: str,
-        tags: list[str],
-        filters: list[str],
+        filters: SubscriptionFilters | None = None,
     ) -> LinkRecord | None:
         async with self._session_factory() as session:
             stmt = insert(Link).values(url=url).on_conflict_do_nothing(index_elements=["url"])
@@ -142,15 +150,11 @@ class OrmLinkRepository(AbstractLinkRepository):
             if existing is not None:
                 return None
 
-            mapping = LinkUserMapping(
-                link_id=link_id,
-                user_id=user_id,
-                tags=tags,
-                filters=filters,
-            )
+            filters_dict = filters.model_dump(mode="json", exclude_none=True) if filters else {}
+            mapping = LinkUserMapping(link_id=link_id, user_id=user_id, filters=filters_dict)
             session.add(mapping)
             await session.commit()
-            return LinkRecord(id=int(link_id), url=url, tags=tags, filters=filters)
+            return LinkRecord(id=int(link_id), url=url, filters=filters)
 
     async def remove_link(self, user_id: UUID, url: str) -> LinkRecord | None:
         async with self._session_factory() as session:
@@ -169,8 +173,7 @@ class OrmLinkRepository(AbstractLinkRepository):
             record = LinkRecord(
                 id=int(link.id),  # type: ignore[arg-type]
                 url=str(link.url),
-                tags=list(mapping.tags or []),
-                filters=list(mapping.filters or []),
+                filters=_parse_filters(mapping.filters),
             )
             await session.delete(mapping)
             await session.commit()
@@ -178,27 +181,27 @@ class OrmLinkRepository(AbstractLinkRepository):
 
     async def get_tracked_links_page(self, offset: int, limit: int) -> list[TrackedLink]:
         async with self._session_factory() as session:
-            stmt = (
-                select(
-                    Link.id,
-                    Link.url,
-                    func.array_agg(UserIdentity.provider_id.cast(BigInteger)),
-                )
-                .join(LinkUserMapping, LinkUserMapping.link_id == Link.id)
-                .join(
-                    UserIdentity,
-                    (UserIdentity.user_id == LinkUserMapping.user_id)
-                    & (UserIdentity.provider == _TELEGRAM),
-                )
-                .group_by(Link.id, Link.url)
-                .order_by(Link.id)
-                .offset(offset)
-                .limit(limit)
+            stmt = text(
+                """
+                SELECT
+                    l.id,
+                    l.url,
+                    jsonb_agg(jsonb_build_object(
+                        'user_id', lum.user_id,
+                        'chat_id', ui.provider_id,
+                        'filters', lum.filters
+                    )) AS subscribers
+                FROM link l
+                JOIN link_user_mapping lum ON l.id = lum.link_id
+                LEFT JOIN user_identities ui
+                    ON ui.user_id = lum.user_id AND ui.provider = 'telegram'
+                GROUP BY l.id, l.url
+                ORDER BY l.id
+                LIMIT :limit OFFSET :offset
+                """,
             )
-            rows = (await session.execute(stmt)).all()
-            return [
-                TrackedLink(link_id=int(r[0]), url=str(r[1]), chat_ids=list(r[2])) for r in rows
-            ]
+            rows = (await session.execute(stmt, {"limit": limit, "offset": offset})).all()
+            return [_parse_tracked_link(r) for r in rows]
 
     async def save_event_data(self, link_id: int, event: EventData) -> None:
         async with self._session_factory() as session:
@@ -217,3 +220,24 @@ class OrmLinkRepository(AbstractLinkRepository):
             )
             session.add(record)
             await session.commit()
+
+
+def _parse_filters(raw: dict[str, Any] | None) -> SubscriptionFilters | None:
+    if not raw:
+        return None
+    return SubscriptionFilters.model_validate(raw)
+
+
+def _parse_tracked_link(row: Any) -> TrackedLink:  # noqa: ANN401
+    link_id = int(row[0])
+    url = str(row[1])
+    raw_subscribers: list[dict[str, Any]] = row[2] or []
+    subscribers = [
+        SubscriberDTO(
+            user_id=UUID(str(sub["user_id"])),
+            tg_chat_id=int(sub["chat_id"]) if sub.get("chat_id") is not None else None,
+            filters=_parse_filters(sub.get("filters")),
+        )
+        for sub in raw_subscribers
+    ]
+    return TrackedLink(link_id=link_id, url=url, subscribers=subscribers)

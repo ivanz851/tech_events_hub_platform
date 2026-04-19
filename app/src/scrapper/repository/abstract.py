@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-from src.scrapper.models import EventData, LinkRecord, TrackedLink
+from src.scrapper.models import EventData, LinkRecord, SubscriptionFilters, TrackedLink
 
 __all__ = ("AbstractLinkRepository",)
 
@@ -33,8 +33,7 @@ class AbstractLinkRepository(ABC):
         self,
         user_id: UUID,
         url: str,
-        tags: list[str],
-        filters: list[str],
+        filters: SubscriptionFilters | None = None,
     ) -> LinkRecord | None: ...
 
     @abstractmethod
