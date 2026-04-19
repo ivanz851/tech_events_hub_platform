@@ -62,6 +62,13 @@ class ScrapperSettings(BaseSettings):
 
     redis_url: str = Field(default="redis://localhost:6379/1")
 
+    smtp_host: str = Field(default="mailpit")
+    smtp_port: int = Field(default=1025)
+    smtp_user: str = Field(default="")
+    smtp_password: str = Field(default="")
+    smtp_from: str = Field(default="noreply@techevents.local")
+    smtp_max_concurrency: int = Field(default=10)
+
     metrics_port: int = Field(default=9001)
 
     @field_validator("retry_on_codes", mode="before")

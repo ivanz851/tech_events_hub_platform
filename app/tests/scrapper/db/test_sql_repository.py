@@ -92,8 +92,8 @@ async def test_get_tracked_links_page(sql_repository: SqlLinkRepository) -> None
     page = await sql_repository.get_tracked_links_page(0, 10)
     shared = next((t for t in page if t.url == "https://t.me/shared_sql"), None)
     assert shared is not None
-    tg_ids = {sub.tg_chat_id for sub in shared.subscribers if sub.tg_chat_id is not None}
-    assert tg_ids == {20008, 20009}
+    uid_set = {sub.user_id for sub in shared.subscribers}
+    assert uid_set == {uid1, uid2}
 
 
 @pytest.mark.asyncio
@@ -104,7 +104,8 @@ async def test_get_tracked_links_page_includes_filters(sql_repository: SqlLinkRe
     page = await sql_repository.get_tracked_links_page(0, 10)
     entry = next((t for t in page if t.url == "https://t.me/filt_sql"), None)
     assert entry is not None
-    sub = next(s for s in entry.subscribers if s.tg_chat_id == 20011)
+    assert len(entry.subscribers) == 1
+    sub = entry.subscribers[0]
     assert sub.filters is not None
     assert sub.filters.city == "SPb"
 

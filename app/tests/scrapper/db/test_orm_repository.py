@@ -94,8 +94,8 @@ async def test_get_tracked_links_page(orm_repository: OrmLinkRepository) -> None
     page = await orm_repository.get_tracked_links_page(0, 10)
     shared = next((t for t in page if t.url == "https://t.me/shared_orm"), None)
     assert shared is not None
-    tg_ids = {sub.tg_chat_id for sub in shared.subscribers if sub.tg_chat_id is not None}
-    assert tg_ids == {10008, 10009}
+    uid_set = {sub.user_id for sub in shared.subscribers}
+    assert uid_set == {uid1, uid2}
 
 
 @pytest.mark.asyncio
@@ -106,7 +106,8 @@ async def test_get_tracked_links_page_includes_filters(orm_repository: OrmLinkRe
     page = await orm_repository.get_tracked_links_page(0, 10)
     entry = next((t for t in page if t.url == "https://t.me/filt_orm"), None)
     assert entry is not None
-    sub = next(s for s in entry.subscribers if s.tg_chat_id == 10011)
+    assert len(entry.subscribers) == 1
+    sub = entry.subscribers[0]
     assert sub.filters is not None
     assert sub.filters.city == "Moscow"
 

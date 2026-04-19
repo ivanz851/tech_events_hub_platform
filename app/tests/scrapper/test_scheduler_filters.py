@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.scrapper.models import SubscriptionFilters
-from src.scrapper.notification.abstract import AbstractNotificationService
+from src.scrapper.notification.router import NotificationRouter
 from src.scrapper.repository.in_memory import InMemoryLinkRepository
 from src.scrapper.scheduler import Scheduler
 from src.scrapper.telegram_scrapper import TelegramChannelScrapper
@@ -30,7 +30,7 @@ async def test_scheduler_sends_only_to_matched_subscribers() -> None:
     uid3 = await repo.get_or_create_by_telegram(103)
     await repo.add_link(uid3, url)
 
-    notification = AsyncMock(spec=AbstractNotificationService)
+    notification = AsyncMock(spec=NotificationRouter)
     tg_scrapper = AsyncMock(spec=TelegramChannelScrapper)
     tg_scrapper.get_new_messages = AsyncMock(return_value=[_make_message(10)])
 
@@ -42,13 +42,13 @@ async def test_scheduler_sends_only_to_matched_subscribers() -> None:
     )
 
     await scheduler._check_and_notify()
-    notification.send_update.assert_not_called()
+    notification.route.assert_not_called()
 
     tg_scrapper.get_new_messages = AsyncMock(return_value=[_make_message(11, "New event!")])
     await scheduler._check_and_notify()
 
-    notification.send_update.assert_called_once()
-    call_kwargs = notification.send_update.call_args.kwargs
+    notification.route.assert_called_once()
+    call_kwargs = notification.route.call_args.kwargs
     assert call_kwargs["url"] == url
-    assert set(call_kwargs["tg_chat_ids"]) == {101, 103}
-    assert 102 not in call_kwargs["tg_chat_ids"]
+    assert set(call_kwargs["user_ids"]) == {uid1, uid3}
+    assert uid2 not in call_kwargs["user_ids"]

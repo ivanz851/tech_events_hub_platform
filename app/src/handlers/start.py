@@ -21,13 +21,18 @@ def make_start_handler(
         if link_token:
             try:
                 await scrapper.link_telegram(link_token, chat_id)
-                await event.respond("Ваш Telegram-аккаунт успешно привязан к Web-аккаунту.")
+                await event.respond(
+                    "✅ Ваш Telegram успешно привязан к Web-аккаунту! "
+                    "Теперь вы можете настраивать подписки на сайте.",
+                )
             except ScrapperClientError as exc:
                 logger.exception(
                     "Failed to link telegram account",
                     extra={"chat_id": chat_id, "error": str(exc)},
                 )
-                await event.respond("Не удалось привязать аккаунт. Токен недействителен или истёк.")
+                await event.respond(
+                    "❌ Ссылка устарела или недействительна. Сгенерируйте новую на сайте.",
+                )
             raise events.StopPropagation
 
         try:
