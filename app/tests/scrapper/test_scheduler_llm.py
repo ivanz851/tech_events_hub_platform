@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.scrapper.llm.client import LLMEventResult
-from src.scrapper.notification.abstract import AbstractNotificationService
+from src.scrapper.notification.router import NotificationRouter
 from src.scrapper.repository.in_memory import InMemoryLinkRepository
 from src.scrapper.scheduler import Scheduler
 from src.scrapper.telegram_scrapper import TelegramChannelScrapper
@@ -33,7 +33,7 @@ async def _make_repo_with_link(chat_id: int, url: str) -> InMemoryLinkRepository
 @pytest.mark.asyncio
 async def test_is_event_false_skips_notification() -> None:
     repo = await _make_repo_with_link(1, "https://t.me/testchannel")
-    notification = AsyncMock(spec=AbstractNotificationService)
+    notification = AsyncMock(spec=NotificationRouter)
 
     llm_client = MagicMock()
     llm_client.analyze = AsyncMock(return_value=LLMEventResult(is_event=False))
@@ -52,14 +52,15 @@ async def test_is_event_false_skips_notification() -> None:
     scrapper.get_new_messages = AsyncMock(return_value=[_make_message(11, "Sale: 50% off shoes!")])
     await scheduler._check_and_notify()
 
-    notification.send_update.assert_not_called()
+    notification.route.assert_not_called()
     llm_client.analyze.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_is_event_true_sends_notification() -> None:
     repo = await _make_repo_with_link(1, "https://t.me/testchannel")
-    notification = AsyncMock(spec=AbstractNotificationService)
+    uid1 = await repo.get_or_create_by_telegram(1)
+    notification = AsyncMock(spec=NotificationRouter)
 
     llm_client = MagicMock()
     llm_client.analyze = AsyncMock(
@@ -84,16 +85,16 @@ async def test_is_event_true_sends_notification() -> None:
     scrapper.get_new_messages = AsyncMock(return_value=[_make_message(11, "PyCon 2025 — join us!")])
     await scheduler._check_and_notify()
 
-    notification.send_update.assert_called_once()
-    call_kwargs = notification.send_update.call_args.kwargs
+    notification.route.assert_called_once()
+    call_kwargs = notification.route.call_args.kwargs
     assert call_kwargs["url"] == "https://t.me/testchannel"
-    assert call_kwargs["tg_chat_ids"] == [1]
+    assert call_kwargs["user_ids"] == [uid1]
 
 
 @pytest.mark.asyncio
 async def test_no_llm_client_always_sends_notification() -> None:
     repo = await _make_repo_with_link(1, "https://t.me/testchannel")
-    notification = AsyncMock(spec=AbstractNotificationService)
+    notification = AsyncMock(spec=NotificationRouter)
 
     scrapper = _make_scrapper([_make_message(10)])
     scheduler = Scheduler(
@@ -109,13 +110,13 @@ async def test_no_llm_client_always_sends_notification() -> None:
     scrapper.get_new_messages = AsyncMock(return_value=[_make_message(11, "Random text")])
     await scheduler._check_and_notify()
 
-    notification.send_update.assert_called_once()
+    notification.route.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_llm_analyze_none_skips_notification() -> None:
     repo = await _make_repo_with_link(1, "https://t.me/testchannel")
-    notification = AsyncMock(spec=AbstractNotificationService)
+    notification = AsyncMock(spec=NotificationRouter)
 
     llm_client = MagicMock()
     llm_client.analyze = AsyncMock(return_value=None)
@@ -134,4 +135,4 @@ async def test_llm_analyze_none_skips_notification() -> None:
     scrapper.get_new_messages = AsyncMock(return_value=[_make_message(11, "Some text")])
     await scheduler._check_and_notify()
 
-    notification.send_update.assert_not_called()
+    notification.route.assert_not_called()

@@ -14,6 +14,8 @@ __all__ = (
     "EventData",
     "SubscriptionFilters",
     "SubscriberDTO",
+    "RouteInfo",
+    "UserProfile",
 )
 
 
@@ -29,8 +31,25 @@ class SubscriptionFilters(BaseModel):
 @dataclass
 class SubscriberDTO:
     user_id: UUID
-    tg_chat_id: int | None
     filters: SubscriptionFilters | None
+
+
+@dataclass
+class RouteInfo:
+    user_id: UUID
+    tg_chat_id: int | None
+    email: str | None
+    notify_telegram: bool
+    notify_email: bool
+
+
+@dataclass
+class UserProfile:
+    user_id: UUID
+    email: str | None
+    providers: list[str]
+    notify_telegram: bool
+    notify_email: bool
 
 
 @dataclass

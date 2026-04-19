@@ -9,6 +9,8 @@ __all__ = (
     "scrapper_llm_errors_total",
     "scrapper_llm_generation_duration_seconds",
     "scrapper_scrape_duration_seconds",
+    "scrapper_emails_sent_total",
+    "scrapper_email_errors_total",
     "detect_link_type",
 )
 
@@ -39,6 +41,16 @@ scrapper_llm_generation_duration_seconds: Histogram = Histogram(
 scrapper_llm_errors_total: Counter = Counter(
     "scrapper_llm_errors",
     "Total number of LLM API errors or JSON parse errors",
+)
+
+scrapper_emails_sent_total: Counter = Counter(
+    "scrapper_emails_sent",
+    "Total number of successfully sent email notifications",
+)
+
+scrapper_email_errors_total: Counter = Counter(
+    "scrapper_email_errors",
+    "Total number of failed email notification attempts",
 )
 
 

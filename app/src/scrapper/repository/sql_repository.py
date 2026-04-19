@@ -9,9 +9,11 @@ import psycopg
 from src.scrapper.models import (
     EventData,
     LinkRecord,
+    RouteInfo,
     SubscriberDTO,
     SubscriptionFilters,
     TrackedLink,
+    UserProfile,
 )
 from src.scrapper.repository.abstract import AbstractLinkRepository
 
@@ -195,13 +197,10 @@ class SqlLinkRepository(AbstractLinkRepository):
                     l.url,
                     jsonb_agg(jsonb_build_object(
                         'user_id', lum.user_id,
-                        'chat_id', ui.provider_id,
                         'filters', lum.filters
                     )) AS subscribers
                 FROM link l
                 JOIN link_user_mapping lum ON l.id = lum.link_id
-                LEFT JOIN user_identities ui
-                    ON ui.user_id = lum.user_id AND ui.provider = 'telegram'
                 GROUP BY l.id, l.url
                 ORDER BY l.id
                 LIMIT %s OFFSET %s
@@ -210,6 +209,85 @@ class SqlLinkRepository(AbstractLinkRepository):
             )
             rows = await cur.fetchall()
             return [_parse_tracked_link(r) for r in rows]
+
+    async def get_notification_routes(self, user_ids: list[UUID]) -> list[RouteInfo]:
+        if not user_ids:
+            return []
+        async with await psycopg.AsyncConnection.connect(self._dsn) as conn, conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT
+                    u.id AS user_id,
+                    (SELECT ui.provider_id FROM user_identities ui
+                     WHERE ui.user_id = u.id AND ui.provider = 'telegram' LIMIT 1) AS tg_chat_id,
+                    u.email,
+                    COALESCE(us.notify_telegram, TRUE) AS notify_telegram,
+                    COALESCE(us.notify_email, FALSE) AS notify_email
+                FROM users u
+                LEFT JOIN user_settings us ON us.user_id = u.id
+                WHERE u.id = ANY(%s)
+                """,
+                ([str(uid) for uid in user_ids],),
+            )
+            rows = await cur.fetchall()
+            return [
+                RouteInfo(
+                    user_id=UUID(str(r[0])),
+                    tg_chat_id=int(r[1]) if r[1] is not None else None,
+                    email=str(r[2]) if r[2] is not None else None,
+                    notify_telegram=bool(r[3]),
+                    notify_email=bool(r[4]),
+                )
+                for r in rows
+            ]
+
+    async def update_user_settings(
+        self,
+        user_id: UUID,
+        notify_email: bool | None = None,
+        notify_telegram: bool | None = None,
+    ) -> None:
+        async with await psycopg.AsyncConnection.connect(self._dsn) as conn, conn.cursor() as cur:
+            await cur.execute(
+                """
+                INSERT INTO user_settings(user_id, notify_email, notify_telegram)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (user_id) DO UPDATE SET
+                    notify_email = COALESCE(EXCLUDED.notify_email, user_settings.notify_email),
+                    notify_telegram = COALESCE(
+                        EXCLUDED.notify_telegram, user_settings.notify_telegram
+                    )
+                """,
+                (str(user_id), notify_email, notify_telegram),
+            )
+            await conn.commit()
+
+    async def get_profile(self, user_id: UUID) -> UserProfile | None:
+        async with await psycopg.AsyncConnection.connect(self._dsn) as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT id, email FROM users WHERE id = %s",
+                (str(user_id),),
+            )
+            user_row = await cur.fetchone()
+            if user_row is None:
+                return None
+            await cur.execute(
+                "SELECT DISTINCT provider FROM user_identities WHERE user_id = %s",
+                (str(user_id),),
+            )
+            providers = [str(r[0]) for r in await cur.fetchall()]
+            await cur.execute(
+                "SELECT notify_telegram, notify_email FROM user_settings WHERE user_id = %s",
+                (str(user_id),),
+            )
+            settings_row = await cur.fetchone()
+            return UserProfile(
+                user_id=user_id,
+                email=str(user_row[1]) if user_row[1] is not None else None,
+                providers=providers,
+                notify_telegram=bool(settings_row[0]) if settings_row else True,
+                notify_email=bool(settings_row[1]) if settings_row else False,
+            )
 
     async def save_event_data(self, link_id: int, event: EventData) -> None:
         async with await psycopg.AsyncConnection.connect(self._dsn) as conn, conn.cursor() as cur:
@@ -250,7 +328,6 @@ def _parse_tracked_link(row: Any) -> TrackedLink:  # noqa: ANN401
     subscribers = [
         SubscriberDTO(
             user_id=UUID(str(sub["user_id"])),
-            tg_chat_id=int(sub["chat_id"]) if sub.get("chat_id") is not None else None,
             filters=_parse_filters(sub.get("filters")),
         )
         for sub in raw_subscribers

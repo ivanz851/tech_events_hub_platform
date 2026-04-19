@@ -245,6 +245,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+  /users/me:
+    get:
+      summary: Получить профиль текущего пользователя
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /users/me/settings:
+    patch:
+      summary: Обновить настройки уведомлений пользователя
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSettingsUpdate'
+      responses:
+        '200':
+          description: Настройки успешно обновлены
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
 components:
   securitySchemes:
     BearerAuth:
@@ -356,3 +400,34 @@ components:
         link:
           type: string
           format: uri
+    UserSettingsUpdate:
+      type: object
+      properties:
+        notify_email:
+          type: boolean
+          nullable: true
+        notify_telegram:
+          type: boolean
+          nullable: true
+    UserSettingsResponse:
+      type: object
+      properties:
+        notify_telegram:
+          type: boolean
+        notify_email:
+          type: boolean
+    UserProfileResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          nullable: true
+        providers:
+          type: array
+          items:
+            type: string
+        settings:
+          $ref: '#/components/schemas/UserSettingsResponse'

@@ -1,7 +1,14 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-from src.scrapper.models import EventData, LinkRecord, SubscriptionFilters, TrackedLink
+from src.scrapper.models import (
+    EventData,
+    LinkRecord,
+    RouteInfo,
+    SubscriptionFilters,
+    TrackedLink,
+    UserProfile,
+)
 
 __all__ = ("AbstractLinkRepository",)
 
@@ -44,3 +51,17 @@ class AbstractLinkRepository(ABC):
 
     @abstractmethod
     async def save_event_data(self, link_id: int, event: EventData) -> None: ...
+
+    @abstractmethod
+    async def get_notification_routes(self, user_ids: list[UUID]) -> list[RouteInfo]: ...
+
+    @abstractmethod
+    async def update_user_settings(
+        self,
+        user_id: UUID,
+        notify_email: bool | None = None,
+        notify_telegram: bool | None = None,
+    ) -> None: ...
+
+    @abstractmethod
+    async def get_profile(self, user_id: UUID) -> UserProfile | None: ...

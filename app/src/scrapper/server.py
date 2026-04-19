@@ -20,9 +20,11 @@ from src.scrapper.db.engine import create_engine, create_session_factory
 from src.scrapper.kafka.producer import KafkaProducerClient
 from src.scrapper.llm.client import YandexLLMClient
 from src.scrapper.notification.abstract import AbstractNotificationService
+from src.scrapper.notification.email_notification import EmailNotificationService
 from src.scrapper.notification.fallback import FallbackNotificationService
 from src.scrapper.notification.http import HttpNotificationService
 from src.scrapper.notification.kafka_notification import KafkaNotificationService
+from src.scrapper.notification.router import NotificationRouter
 from src.scrapper.repository.abstract import AbstractLinkRepository
 from src.scrapper.repository.orm_repository import OrmLinkRepository
 from src.scrapper.repository.sql_repository import SqlLinkRepository
@@ -90,7 +92,7 @@ def _build_bot_client(settings: ScrapperSettings) -> BotClient:
     )
 
 
-def _build_notification(
+def _build_telegram_service(
     settings: ScrapperSettings,
     kafka_producer: KafkaProducerClient | None,
 ) -> AbstractNotificationService:
@@ -99,6 +101,27 @@ def _build_notification(
         kafka_service = KafkaNotificationService(kafka_producer, settings.kafka_updates_topic)
         return FallbackNotificationService(kafka_service, http_service)
     return http_service
+
+
+def _build_email_service(settings: ScrapperSettings) -> EmailNotificationService:
+    cb = CircuitBreaker(
+        sliding_window_size=settings.cb_sliding_window_size,
+        min_calls=settings.cb_min_calls,
+        failure_rate_threshold=settings.cb_failure_rate_threshold,
+        wait_duration_seconds=settings.cb_wait_duration_seconds,
+        permitted_calls_in_half_open=settings.cb_permitted_calls_in_half_open,
+    )
+    return EmailNotificationService(
+        smtp_host=settings.smtp_host,
+        smtp_port=settings.smtp_port,
+        smtp_user=settings.smtp_user,
+        smtp_password=settings.smtp_password,
+        smtp_from=settings.smtp_from,
+        circuit_breaker=cb,
+        retry_count=settings.retry_count,
+        retry_backoff_seconds=settings.retry_backoff_seconds,
+        max_concurrency=settings.smtp_max_concurrency,
+    )
 
 
 def _build_yandex_oauth_client(settings: ScrapperSettings) -> YandexOAuthClient:
@@ -121,7 +144,7 @@ def _build_yandex_oauth_client(settings: ScrapperSettings) -> YandexOAuthClient:
 
 
 @asynccontextmanager
-async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
+async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:  # noqa: PLR0915
     scrapper_settings = ScrapperSettings()  # type: ignore[call-arg]
     bot_settings = TGBotSettings()  # type: ignore[call-arg]
 
@@ -135,7 +158,13 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:
         kafka_producer = KafkaProducerClient(scrapper_settings.kafka_bootstrap_servers)
         await kafka_producer.start()
 
-    notification = _build_notification(scrapper_settings, kafka_producer)
+    telegram_service = _build_telegram_service(scrapper_settings, kafka_producer)
+    email_service = _build_email_service(scrapper_settings)
+    notification = NotificationRouter(
+        repository=repository,
+        telegram_service=telegram_service,
+        email_service=email_service,
+    )
 
     tg_client = TelegramClient(
         "scrapper_session",

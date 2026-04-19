@@ -11,9 +11,11 @@ from src.scrapper.db.models import Link, LinkUserMapping, User, UserIdentity, Us
 from src.scrapper.models import (
     EventData,
     LinkRecord,
+    RouteInfo,
     SubscriberDTO,
     SubscriptionFilters,
     TrackedLink,
+    UserProfile,
 )
 from src.scrapper.repository.abstract import AbstractLinkRepository
 
@@ -188,13 +190,10 @@ class OrmLinkRepository(AbstractLinkRepository):
                     l.url,
                     jsonb_agg(jsonb_build_object(
                         'user_id', lum.user_id,
-                        'chat_id', ui.provider_id,
                         'filters', lum.filters
                     )) AS subscribers
                 FROM link l
                 JOIN link_user_mapping lum ON l.id = lum.link_id
-                LEFT JOIN user_identities ui
-                    ON ui.user_id = lum.user_id AND ui.provider = 'telegram'
                 GROUP BY l.id, l.url
                 ORDER BY l.id
                 LIMIT :limit OFFSET :offset
@@ -202,6 +201,69 @@ class OrmLinkRepository(AbstractLinkRepository):
             )
             rows = (await session.execute(stmt, {"limit": limit, "offset": offset})).all()
             return [_parse_tracked_link(r) for r in rows]
+
+    async def get_notification_routes(self, user_ids: list[UUID]) -> list[RouteInfo]:
+        if not user_ids:
+            return []
+        async with self._session_factory() as session:
+            stmt = text(
+                """
+                SELECT
+                    u.id AS user_id,
+                    (SELECT ui.provider_id FROM user_identities ui
+                     WHERE ui.user_id = u.id AND ui.provider = 'telegram' LIMIT 1) AS tg_chat_id,
+                    u.email,
+                    COALESCE(us.notify_telegram, TRUE) AS notify_telegram,
+                    COALESCE(us.notify_email, FALSE) AS notify_email
+                FROM users u
+                LEFT JOIN user_settings us ON us.user_id = u.id
+                WHERE u.id = ANY(:user_ids)
+                """,
+            )
+            rows = (await session.execute(stmt, {"user_ids": [str(uid) for uid in user_ids]})).all()
+            return [
+                RouteInfo(
+                    user_id=UUID(str(r[0])),
+                    tg_chat_id=int(r[1]) if r[1] is not None else None,
+                    email=str(r[2]) if r[2] is not None else None,
+                    notify_telegram=bool(r[3]),
+                    notify_email=bool(r[4]),
+                )
+                for r in rows
+            ]
+
+    async def update_user_settings(
+        self,
+        user_id: UUID,
+        notify_email: bool | None = None,
+        notify_telegram: bool | None = None,
+    ) -> None:
+        async with self._session_factory() as session:
+            settings = await session.get(UserSettings, user_id)
+            if settings is None:
+                settings = UserSettings(user_id=user_id)
+                session.add(settings)
+            if notify_email is not None:
+                settings.notify_email = notify_email
+            if notify_telegram is not None:
+                settings.notify_telegram = notify_telegram
+            await session.commit()
+
+    async def get_profile(self, user_id: UUID) -> UserProfile | None:
+        async with self._session_factory() as session:
+            user = await session.get(User, user_id)
+            if user is None:
+                return None
+            stmt = select(UserIdentity.provider).where(UserIdentity.user_id == user_id)
+            providers = list((await session.execute(stmt)).scalars().all())
+            settings = await session.get(UserSettings, user_id)
+            return UserProfile(
+                user_id=user_id,
+                email=str(user.email) if user.email else None,
+                providers=[str(p) for p in providers],
+                notify_telegram=bool(settings.notify_telegram) if settings else True,
+                notify_email=bool(settings.notify_email) if settings else False,
+            )
 
     async def save_event_data(self, link_id: int, event: EventData) -> None:
         async with self._session_factory() as session:
@@ -235,7 +297,6 @@ def _parse_tracked_link(row: Any) -> TrackedLink:  # noqa: ANN401
     subscribers = [
         SubscriberDTO(
             user_id=UUID(str(sub["user_id"])),
-            tg_chat_id=int(sub["chat_id"]) if sub.get("chat_id") is not None else None,
             filters=_parse_filters(sub.get("filters")),
         )
         for sub in raw_subscribers

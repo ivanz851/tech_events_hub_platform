@@ -8,11 +8,13 @@ from typing import TYPE_CHECKING
 from src.metrics import detect_link_type, scrapper_scrape_duration_seconds
 from src.scrapper.filters import match_filters
 from src.scrapper.models import EventData, TrackedLink
-from src.scrapper.notification.abstract import AbstractNotificationService, NotificationError
 from src.scrapper.strategies.abstract import LinkValidationError
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from src.scrapper.llm.client import LLMEventResult, YandexLLMClient
+    from src.scrapper.notification.router import NotificationRouter
     from src.scrapper.repository.abstract import AbstractLinkRepository
     from src.scrapper.strategies.web import WebScrapperStrategy
     from src.scrapper.telegram_scrapper import TelegramChannelScrapper
@@ -26,7 +28,7 @@ class Scheduler:
     def __init__(
         self,
         repository: AbstractLinkRepository,
-        notification: AbstractNotificationService,
+        notification: NotificationRouter,
         tg_scrapper: TelegramChannelScrapper,
         web_strategy: WebScrapperStrategy | None = None,
         interval_seconds: int = 10,
@@ -112,7 +114,7 @@ class Scheduler:
             logger.info("Not an IT event, skipping notification", extra={"url": url})
             return
         await self._repository.save_event_data(tracked.link_id, event)
-        matched = _matched_chat_ids(tracked, event)
+        matched = _matched_user_ids(tracked, event)
         if matched:
             await self._notify(url, matched, event)
 
@@ -146,7 +148,7 @@ class Scheduler:
             logger.info("Not an IT event, skipping notification", extra={"url": url})
             return
         await self._repository.save_event_data(tracked.link_id, event)
-        matched = _matched_chat_ids(tracked, event)
+        matched = _matched_user_ids(tracked, event)
         if matched:
             await self._notify(url, matched, event)
 
@@ -169,28 +171,25 @@ class Scheduler:
         self._last_message_ids[url] = baseline
         logger.info("Baseline set", extra={"url": url, "baseline_id": baseline})
 
-    async def _notify(self, url: str, chat_ids: list[int], event: EventData) -> None:
+    async def _notify(self, url: str, user_ids: list[UUID], event: EventData) -> None:
         from src.scrapper.notification.formatter import format_event_notification
 
         description = format_event_notification(url, event)
         try:
-            await self._notification.send_update(
+            await self._notification.route(
                 update_id=self._update_counter,
                 url=url,
                 description=description,
-                tg_chat_ids=chat_ids,
+                user_ids=user_ids,
+                event=event,
             )
-            logger.info("Notification sent", extra={"url": url, "recipients": len(chat_ids)})
-        except NotificationError as exc:
-            logger.exception("Failed to notify bot", extra={"url": url, "error": str(exc)})
+            logger.info("Notification routed", extra={"url": url, "recipients": len(user_ids)})
+        except Exception as exc:
+            logger.exception("Failed to route notification", extra={"url": url, "error": str(exc)})
 
 
-def _matched_chat_ids(tracked: TrackedLink, event: EventData) -> list[int]:
-    return [
-        sub.tg_chat_id
-        for sub in tracked.subscribers
-        if sub.tg_chat_id is not None and match_filters(event, sub.filters)
-    ]
+def _matched_user_ids(tracked: TrackedLink, event: EventData) -> list[UUID]:
+    return [sub.user_id for sub in tracked.subscribers if match_filters(event, sub.filters)]
 
 
 def _llm_result_to_event_data(result: LLMEventResult) -> EventData:

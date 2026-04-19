@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title or "Новый анонс мероприятия" }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+    .card { background: #fff; border-radius: 8px; padding: 24px; max-width: 600px; margin: 0 auto; }
+    .title { font-size: 22px; font-weight: bold; color: #1a1a2e; margin-bottom: 12px; }
+    .meta { font-size: 14px; color: #555; margin-bottom: 8px; }
+    .meta strong { color: #333; }
+    .summary { font-size: 15px; color: #444; line-height: 1.6; margin: 16px 0; }
+    .btn { display: inline-block; padding: 10px 20px; background: #4a90e2; color: #fff;
+           text-decoration: none; border-radius: 5px; font-size: 14px; margin-top: 16px; }
+    .footer { font-size: 12px; color: #aaa; margin-top: 24px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">{{ title or "Новый анонс мероприятия" }}</div>
+
+    {% if event_date %}
+    <div class="meta"><strong>Дата:</strong> {{ event_date }}</div>
+    {% endif %}
+
+    {% if location %}
+    <div class="meta"><strong>Место:</strong> {{ location }}</div>
+    {% endif %}
+
+    {% if price %}
+    <div class="meta"><strong>Стоимость:</strong> {{ price }}</div>
+    {% endif %}
+
+    {% if event_format %}
+    <div class="meta"><strong>Формат:</strong> {{ event_format }}</div>
+    {% endif %}
+
+    {% if summary %}
+    <div class="summary">{{ summary }}</div>
+    {% endif %}
+
+    <a href="{{ url }}" class="btn">Подробнее →</a>
+
+    <div class="footer">TechEventsHub · <a href="{{ url }}">{{ url }}</a></div>
+  </div>
+</body>
+</html>
