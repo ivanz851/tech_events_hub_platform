@@ -1,11 +1,10 @@
-\documentclass[a4paper,14pt]{extarticle}
+\documentclass[a4paper,14pt]{extreport}
 \usepackage{geometry}
+\geometry{left=3cm, right=1.5cm, top=2cm, bottom=2cm} % Настройки ГОСТ полей
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[english,russian]{babel}
-\usepackage{amsmath}
-\usepackage{amsthm}
-\usepackage{amssymb}
+\usepackage{amsmath, amsthm, amssymb, mathtools}
 \usepackage{fancyhdr}
 \usepackage{setspace}
 \usepackage{graphicx}
@@ -16,8 +15,6 @@
 \usepackage{listings}
 \usepackage{indentfirst}
 \usepackage[colorlinks,citecolor=blue,linkcolor=blue,bookmarks=false,hypertexnames=true, urlcolor=blue]{hyperref} 
-\usepackage{indentfirst}
-\usepackage{mathtools}
 \usepackage{booktabs}
 \usepackage[flushleft]{threeparttable}
 \usepackage{tablefootnote}
@@ -25,11 +22,11 @@
 \usepackage{pdfpages}
 \usepackage[titletoc,title]{appendix}
 
-\usepackage{chngcntr} % нумерация графиков и таблиц по секциям
-\counterwithin{table}{section}
-\counterwithin{figure}{section}
+\usepackage{chngcntr} % нумерация графиков и таблиц по главам
+\counterwithin{table}{chapter}
+\counterwithin{figure}{chapter}
 
-\graphicspath{{graphics/}}%путь к рисункам
+\graphicspath{{graphics/}} % путь к рисункам
 
 \usepackage{pdflscape}
 
@@ -37,15 +34,11 @@
 \renewcommand{\@biblabel}[1]{#1.} % Заменяем библиографию с квадратных скобок на точку:
 \makeatother
 
-\geometry{left=3cm}% левое поле ГОСТ!!!
-\geometry{right=1.5cm}% правое поле
-\geometry{top=2cm}% верхнее поле ГОСТ!!!
-\geometry{bottom=2cm}% нижнее поле ГОСТ!!!
 \renewcommand{\baselinestretch}{1.5} % междустрочный интервал
 
 
 \newcommand{\bibref}[2]{\hyperlink{#1}{#2}} % biblabel, authors, year
-\addto\captionsrussian{\def\refname{Список литературы}} 
+\addto\captionsrussian{\def\bibname{Список литературы}} 
 
 \renewcommand{\theenumi}{\arabic{enumi}}% Меняем везде перечисления на цифра.цифра
 \renewcommand{\labelenumi}{\arabic{enumi}}% Меняем везде перечисления на цифра.цифра
@@ -57,55 +50,71 @@
 
 \usepackage{Style/code}
 
+
+% Пакет для настройки внешнего вида заголовков
+\usepackage{titlesec}
+
+% Настройка визуального вида \chapter (Главы)
+\titleformat{\chapter}[block]
+  {\normalfont\large\bfseries\centering} % Шрифт: чуть больше основного (16pt), жирный, по центру
+  {\chaptertitlename\ \thechapter.} % Пишет "Глава 1."
+  {1ex} % Пробел между номером и названием
+  {}
+
+% Убираем гигантские отступы сверху у глав
+% {отступ слева}{отступ сверху}{отступ снизу}
+\titlespacing*{\chapter}{0pt}{-30pt}{20pt}
+
+% Настройка визуального вида \section (1.1) и \subsection (1.1.1)
+\titleformat{\section}
+  {\normalfont\normalsize\bfseries}{\thesection}{1em}{}
+\titlespacing*{\section}{\parindent}{15pt}{10pt}
+
+\titleformat{\subsection}
+  {\normalfont\normalsize\bfseries}{\thesubsection}{1em}{}
+\titlespacing*{\subsection}{\parindent}{15pt}{10pt}
+
+
+
 \begin{document}
-\renewcommand{\thelstlisting}{\thesection.\arabic{lstlisting}}
+\renewcommand{\thelstlisting}{\thechapter.\arabic{lstlisting}}
 
 \includepdf[pages=1]{title_page.pdf}
-\newpage
+
 \input{annotation}
-\newpage
+
 \setcounter{page}{2}
 {
 	\hypersetup{linkcolor=black}
 	\tableofcontents
+    \clearpage
 }
-\newpage
+
 \input{glossary}
 \newpage 
 \input{introduction/main}
 \newpage
-\input{literature_overview}
+\input{1_analytical_section/main.tex}
 \newpage
-\input{product_research/main}
+\input{2_system_architecture_design/main.tex}
 \newpage
-\input{architecture/main}
+\input{3_business_logic_implementation/main.tex}
 \newpage
-\input{auth/main}
+\input{4_reliability_and_infrastructure/main.tex}
 \newpage
-\input{sources_parsing/main}
-\newpage
-\input{llm_summarization}
-\newpage
-\input{fault_tolerance/main}
-\newpage
-\input{observability/main}
-\newpage
-\input{ci_cd.tex}
-\newpage
-\input{testing/main}
-\newpage
-\input{conclusion}
+\input{conclusion/main.tex}
 \newpage
 \input{bibliography}
 
 \newpage
 \begin{appendices}
-    \renewcommand{\thesection}{\Asbuk{section}.}
-
-    \input{appendices/ta_questionnaire}
+    \renewcommand{\thechapter}{\Asbuk{chapter}}
+    \renewcommand{\thesection}{\thechapter.\arabic{section}}
     
-    \newpage
-    \input{appendices/launch_instructions/main}
+    \input{appendices/1_ta_questionnaire.tex}
+    \input{appendices/2_launch_instructions/main.tex}
+    \input{appendices/3_system_operation_demo.tex}
+    \input{appendices/4_automated_tests_listings.tex}
 \end{appendices}
 
 \end{document}
