@@ -12,9 +12,19 @@
 \usepackage{tikz}
 \usepackage{pgf}
 \usepackage{subcaption}
+% --- Оформление таблиц по ГОСТ ---
+\usepackage{array}
+
+\captionsetup[table]{
+    justification=raggedright,
+    singlelinecheck=false,    
+    labelsep=endash,          
+    skip=5pt                 
+}
+% ------------------------------------
 \usepackage{listings}
 \usepackage{indentfirst}
-\usepackage[colorlinks,citecolor=blue,linkcolor=blue,bookmarks=false,hypertexnames=true, urlcolor=blue]{hyperref} 
+\usepackage[hidelinks, bookmarks=false, hypertexnames=true, unicode=true]{hyperref} 
 \usepackage{booktabs}
 \usepackage[flushleft]{threeparttable}
 \usepackage{tablefootnote}
@@ -74,7 +84,7 @@
   {\normalfont\normalsize\bfseries}{\thesubsection}{1em}{}
 \titlespacing*{\subsection}{\parindent}{15pt}{10pt}
 
-
+\newcommand{\hiddenref}[1]{{\hypersetup{linkcolor=black}\ref{#1}}}
 
 \begin{document}
 \renewcommand{\thelstlisting}{\thechapter.\arabic{lstlisting}}
@@ -84,11 +94,11 @@
 \input{annotation}
 
 \setcounter{page}{2}
-{
+\begingroup
 	\hypersetup{linkcolor=black}
 	\tableofcontents
     \clearpage
-}
+\endgroup
 
 \input{glossary}
 \newpage 
@@ -98,8 +108,8 @@
 \newpage
 \input{2_system_architecture_design/main.tex}
 \newpage
-\input{3_business_logic_implementation/main.tex}
-\newpage
+% \input{3_business_logic_implementation/main.tex}
+% \newpage
 \input{4_reliability_and_infrastructure/main.tex}
 \newpage
 \input{conclusion/main.tex}
@@ -112,9 +122,9 @@
     \renewcommand{\thesection}{\thechapter.\arabic{section}}
     
     \input{appendices/1_ta_questionnaire.tex}
-    \input{appendices/2_launch_instructions/main.tex}
-    \input{appendices/3_system_operation_demo.tex}
-    \input{appendices/4_automated_tests_listings.tex}
+    \input{appendices/2_launch_instructions.tex}
+    % \input{appendices/3_system_operation_demo.tex}
+    % \input{appendices/4_automated_tests_listings.tex}
 \end{appendices}
 
 \end{document}

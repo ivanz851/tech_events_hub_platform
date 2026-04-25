@@ -2,7 +2,172 @@
 \section*{Определения, обозначения и сокращения}
 \addcontentsline{toc}{chapter}{Определения, обозначения и сокращения}
 \begin{enumerate}
+    % --- Термины на русском ---
+    \item \textbf{Батчинг} ~--- Пакетная обработка  TODO
 
-\item \textbf{JSON Web Token (JWT)} -- открытый стандарт, определяющий компактный и самодостаточный способ безопасной передачи информации между сторонами в виде ключей (токенов) в формате JSON~\cite{jwt}. 
+    \item \textbf{Бэкенд} ~--- TODO
+    
+    \item \textbf{Веб-скрейпинг} ~--- технология получения веб-данных путём извлечения их со страниц веб-ресурсов.
+    Веб-скрейпинг используется для синтаксического преобразования веб-страниц в более удобные для работы формы.
+    
+    \item \textbf{Машина состояний} ~--- TODO
+    
+    \item \textbf{Дашборд} ~--- TODO
+    
+    \item \textbf{Маршрутизатор (в контексте маршрутизации уведомлений)} ~--- TODO
+    
+    \item \textbf{Миграция базы данных} ~--- TODO
+    
+    \item \textbf{Наблюдаемость} ~--- TODO
+    
+    \item \textbf{Омниканальность} ~--- интеграция разрозненных каналов коммуникации в единую систему, с целью обеспечения непрерывной коммуникации с клиентом~\cite{omnichannel_def}.
+    В контексте данного проекта - способность системы обеспечивать доставку уведомлений пользователю в мессенджере Telegram и на электронную почту на основе единого цифрового профиля.
+    
+    \item \textbf{Отказоустойчивость} ~--- TODO
+    
+    \item \textbf{Паттерн проектирования} ~--- TODO
+    
+    \item \textbf{Планировщик задач} ~--- TODO
+    
+    \item \textbf{Промпт} ~--- TODO
+    
+    \item \textbf{Промпт-инжиниринг} ~--- TODO
+    
+    \item \textbf{Репозиторий (паттерн)} ~--- TODO
+    
+    \item \textbf{Токенизация} ~--- TODO
+    
+    \item \textbf{Фронтенд} ~--- TODO
+    
+    % --- Термины на английском ---
+
+    \item \textbf{aiosmtplib} ~--- TODO
+    
+    \item \textbf{Apache Kafka} ~--- распределённая опенсорс‑платформа для работы с потоками событий~\cite{kafka_def}. 
+    
+    \item \textbf{API} (Application Programming Interface, интерфейс программирования приложений) ~--- набор правил или протоколов, позволяющий программным приложениям взаимодействовать друг с другом для обмена данными и функциональными возможностями~\cite{api_def}.
+
+    \item \textbf{BeautifulSoup4} ~--- 
+    
+    \item \textbf{Black} ~--- 
+    
+    \item \textbf{CI/CD} (Continuous Integration / Continuous Deployment) ~--- 
+    
+    \item \textbf{Circuit Breaker} ~--- 
+    
+    \item \textbf{CORS} (Cross-Origin Resource Sharing) ~--- 
+    
+    \item \textbf{Deep Linking} ~--- 
+    
+    \item \textbf{DLQ} (Dead Letter Queue) ~--- 
+    
+    \item \textbf{Docker} ~--- 
+    
+    \item \textbf{Docker Compose} ~--- 
+    
+    \item \textbf{DTO} (Data Transfer Object) ~--- 
+    
+    \item \textbf{Fail-fast} ~--- 
+    
+    \item \textbf{Fallback} ~--- 
+    
+    \item \textbf{FastAPI} ~--- 
+    
+    \item \textbf{Grafana} ~--- платформа с открытым исходным кодом для аналитики и визуализации, которая используется для мониторинга и анализа показателей из различных источников данных.  
+    
+    \item \textbf{HTTP} (HyperText Transfer Protocol)~--- протокол прикладного уровня передачи данных, являющийся универсальным средством взаимодействия между узлами как Всемирной паутины, так и изолированных веб-инфраструктур~\cite{http_def}. 
+    
+    \item \textbf{Jinja2} ~--- 
+    
+    \item \textbf{JSON} (JavaScript Object Notation) ~--- 
+    
+    \item \textbf{JWT} (JSON Web Token) ~--- открытый стандарт, определяющий компактный и самодостаточный способ безопасной передачи информации между сторонами в виде ключей (токенов) в формате JSON~\cite{jwt}.  
+    
+    \item \textbf{Liquibase} ~--- 
+    
+    \item \textbf{LLM} (Large Language Model) ~--- 
+    
+    \item \textbf{Mailpit} ~--- 
+    
+    \item \textbf{MVP} (Minimum Viable Product) ~--- 
+    
+    \item \textbf{Mypy} ~--- 
+    
+    \item \textbf{Next.js} ~--- 
+    
+    \item \textbf{OAuth} (Open Authorization) ~--- 
+    
+    \item \textbf{OpenAPI} ~--- открытый стандарт или спецификация для машиночитаемого описания HTTP API, таких как REST-API. 
+    С помощью спецификации описываются эндпоинты (URL, по которому можно получить доступ к функциональности API), методы, параметры, заголовки, cookies и другие аспекты работы современных API~\cite{openapi_def}.
+
+    \item \textbf{ORM} (Object-Relational Mapping) ~--- 
+    
+    \item \textbf{PostgreSQL} ~--- 
+    
+    \item \textbf{Prometheus} ~--- набор инструментов для мониторинга и оповещения о системных событиях с открытым исходным кодом. 
+    Prometheus собирает и хранит метрики в виде данных временных рядов, то есть информация о метриках сохраняется с указанием времени их записи, а также с дополнительными парами <<ключ-значение>>, которые называются метками~\cite{prometheus_official}. 
+    
+    \item \textbf{PromQL} ~--- 
+    
+    \item \textbf{psycopg3} ~--- 
+    
+    \item \textbf{Pydantic} ~--- 
+    
+    \item \textbf{Pytest} ~--- 
+    
+    \item \textbf{Python} ~--- 
+    
+    \item \textbf{Rate Limiting} ~--- 
+    
+    \item \textbf{React} ~--- 
+    
+    \item \textbf{react-hook-form} ~--- 
+    
+    \item \textbf{RED} (RED-метрики) ~--- подход к мониторингу систем на базе трех метрик: Rate (количество запросов в секунду), Errors (количество запросов, завершившихся ошибкой) и Duration (время, затраченное на обработку запроса). 
+    Метод был разработан специально для микросервисной архитектуры и request-driven систем~\cite{red_def}. 
+    
+    \item \textbf{Redis} ~--- 
+    
+    \item \textbf{REST} (Representational State Transfer, передача состояния представления) ~--- архитектурный стиль взаимодействия компонентов распределенного приложения в сети~\cite{rest_api_def}.  
+    
+    \item \textbf{Retry} ~--- 
+    
+    \item \textbf{Ruff} ~--- 
+    
+    \item \textbf{Server Action} ~--- 
+    
+    \item \textbf{Shadcn UI} ~--- 
+    
+    \item \textbf{SMTP} (Simple Mail Transfer Protocol, простой протокол передачи почты)~--- стандартный сетевой протокол, предназначенный для передачи электронной почты\cite{smtp_def}. 
+    
+    \item \textbf{Spec-first} ~--- 
+    
+    \item \textbf{SQL} (Structured Query Language) ~--- 
+    
+    \item \textbf{SQLAlchemy} ~--- 
+    
+    \item \textbf{Tailwind CSS} ~--- 
+    
+    \item \textbf{Telethon} ~--- 
+    
+    \item \textbf{Testcontainers} ~--- 
+    
+    \item \textbf{Timeout} ~--- 
+    
+    \item \textbf{UI} (User Interface) ~--- 
+    
+    \item \textbf{URL} (Uniform Resource Locator) ~--- 
+    
+    \item \textbf{User-Agent} ~--- 
+    
+    \item \textbf{UUID} (Universally Unique Identifier) ~--- 
+    
+    \item \textbf{Uvicorn} ~--- 
+    
+    \item \textbf{Yandex OAuth} ~--- 
+    
+    \item \textbf{YandexGPT} ~--- 
+    
+    \item \textbf{Zod} ~--- 
 
 \end{enumerate}
