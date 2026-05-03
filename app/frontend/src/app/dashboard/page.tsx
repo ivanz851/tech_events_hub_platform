@@ -1,9 +1,9 @@
 import { LayoutDashboard } from "lucide-react";
-import { getLinks } from "@/lib/api";
+import { getLinks, LinkResponse } from "@/lib/api";
 import { DashboardContent } from "./dashboard-content";
 
 export default async function DashboardPage() {
-  let links = [];
+  let links: LinkResponse[] = [];
   try {
     links = await getLinks();
   } catch {

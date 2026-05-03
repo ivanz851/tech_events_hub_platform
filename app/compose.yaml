@@ -44,7 +44,7 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
@@ -69,9 +69,9 @@ services:
 
   bot:
     container_name: bot
-    build:
-      context: .
-      dockerfile: bot.Dockerfile
+    image: techevents-bot:latest
+    volumes:
+      - ./bot_session.session:/app/bot_session.session
     ports:
       - "7777:7777"
       - "9000:9000"
@@ -91,9 +91,7 @@ services:
 
   scrapper:
     container_name: scrapper
-    build:
-      context: .
-      dockerfile: scrapper.Dockerfile
+    image: techevents-scrapper:latest
     ports:
       - "8080:8080"
       - "9001:9001"
@@ -138,11 +136,22 @@ services:
     networks:
       - backend
 
+  frontend:
+    container_name: frontend
+    image: techevents-frontend:latest
+    ports:
+      - "3000:3000"
+    networks:
+      - backend
+    depends_on:
+      - scrapper
+    restart: unless-stopped
+
   grafana:
     container_name: grafana
     image: grafana/grafana-oss:latest
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
