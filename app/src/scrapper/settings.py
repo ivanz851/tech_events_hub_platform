@@ -48,6 +48,7 @@ class ScrapperSettings(BaseSettings):
     cb_permitted_calls_in_half_open: int = Field(default=1)
 
     validation_timeout_seconds: float = Field(default=5.0)
+    playwright_timeout_seconds: float = Field(default=20.0)
 
     yandex_api_key: str = Field(default="")
     yandex_folder_id: str = Field(default="")
