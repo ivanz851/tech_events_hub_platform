@@ -127,3 +127,5 @@ debug_full.py
 # Junk
 .*/
 !.github/
+*.txt
+*.tex
