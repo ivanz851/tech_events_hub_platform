@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from src.scrapper.llm.client import LLMEventResult, YandexLLMClient
     from src.scrapper.notification.router import NotificationRouter
     from src.scrapper.repository.abstract import AbstractLinkRepository
+    from src.scrapper.strategies.factory import StrategyFactory
     from src.scrapper.strategies.web import WebScrapperStrategy
     from src.scrapper.telegram_scrapper import TelegramChannelScrapper
 
@@ -25,12 +26,13 @@ logger = logging.getLogger(__name__)
 
 
 class Scheduler:
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         repository: AbstractLinkRepository,
         notification: NotificationRouter,
         tg_scrapper: TelegramChannelScrapper,
         web_strategy: WebScrapperStrategy | None = None,
+        strategy_factory: StrategyFactory | None = None,
         interval_seconds: int = 10,
         batch_size: int = 100,
         worker_count: int = 4,
@@ -40,6 +42,7 @@ class Scheduler:
         self._notification = notification
         self._tg_scrapper = tg_scrapper
         self._web_strategy = web_strategy
+        self._strategy_factory = strategy_factory
         self._interval = interval_seconds
         self._batch_size = batch_size
         self._worker_count = worker_count
@@ -86,6 +89,8 @@ class Scheduler:
     async def _process_url_inner(self, tracked: TrackedLink) -> None:
         if detect_link_type(tracked.url) == "telegram":
             await self._process_telegram_url(tracked)
+        elif self._strategy_factory is not None:
+            await self._process_web_url_via_factory(tracked, self._strategy_factory)
         elif self._web_strategy is not None:
             await self._process_web_url(tracked, self._web_strategy)
 
@@ -110,6 +115,40 @@ class Scheduler:
 
         text = new_messages[0].text if new_messages else None
         event = await self._analyze_content(text, url, fallback=EventData(summary=text))
+        if event is None:
+            logger.info("Not an IT event, skipping notification", extra={"url": url})
+            return
+        await self._repository.save_event_data(tracked.link_id, event)
+        matched = _matched_user_ids(tracked, event)
+        if matched:
+            await self._notify(url, matched, event)
+
+    async def _process_web_url_via_factory(
+        self,
+        tracked: TrackedLink,
+        factory: StrategyFactory,
+    ) -> None:
+        url = tracked.url
+        try:
+            content = await factory.fetch_with_fallback(url)
+        except LinkValidationError:
+            logger.exception("Failed to fetch web content", extra={"url": url})
+            return
+
+        current_hash = hashlib.sha256(content.encode()).hexdigest()
+        if url not in self._last_content_hashes:
+            self._last_content_hashes[url] = current_hash
+            logger.info("Web baseline set", extra={"url": url})
+            return
+
+        if self._last_content_hashes[url] == current_hash:
+            return
+
+        self._last_content_hashes[url] = current_hash
+        self._update_counter += 1
+        logger.info("Web content changed", extra={"url": url})
+        fallback = EventData(summary=f"Страница обновилась: {url}")
+        event = await self._analyze_content(content, url, fallback=fallback)
         if event is None:
             logger.info("Not an IT event, skipping notification", extra={"url": url})
             return

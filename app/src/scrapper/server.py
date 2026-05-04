@@ -31,6 +31,7 @@ from src.scrapper.repository.sql_repository import SqlLinkRepository
 from src.scrapper.scheduler import Scheduler
 from src.scrapper.settings import AccessType, MessageTransport, ScrapperSettings
 from src.scrapper.strategies.factory import StrategyFactory
+from src.scrapper.strategies.playwright_strategy import PlaywrightScrapperStrategy
 from src.scrapper.strategies.telegram import TelegramScrapperStrategy
 from src.scrapper.strategies.web import WebScrapperStrategy
 from src.scrapper.telegram_scrapper import TelegramChannelScrapper
@@ -145,6 +146,8 @@ def _build_yandex_oauth_client(settings: ScrapperSettings) -> YandexOAuthClient:
 
 @asynccontextmanager
 async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:  # noqa: PLR0915
+    from playwright.async_api import async_playwright
+
     scrapper_settings = ScrapperSettings()  # type: ignore[call-arg]
     bot_settings = TGBotSettings()  # type: ignore[call-arg]
 
@@ -185,7 +188,28 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:  # noqa
         tg_scrapper,
         timeout_seconds=scrapper_settings.validation_timeout_seconds,
     )
-    strategy_factory = StrategyFactory(tg_strategy=tg_strategy, web_strategy=web_strategy)
+
+    pw = await async_playwright().start()
+    browser = await pw.chromium.launch(headless=True)
+    browser_context = await browser.new_context(
+        user_agent=(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+        viewport={"width": 1280, "height": 800},
+    )
+    playwright_strategy = PlaywrightScrapperStrategy(
+        context=browser_context,
+        timeout_seconds=scrapper_settings.playwright_timeout_seconds,
+    )
+    logger.info("Playwright browser context initialized")
+
+    strategy_factory = StrategyFactory(
+        tg_strategy=tg_strategy,
+        web_strategy=web_strategy,
+        playwright_strategy=playwright_strategy,
+    )
     llm_client = _build_llm_client(scrapper_settings)
     if llm_client is not None:
         logger.info("YandexGPT LLM client initialized")
@@ -195,6 +219,7 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:  # noqa
         notification=notification,
         tg_scrapper=tg_scrapper,
         web_strategy=web_strategy,
+        strategy_factory=strategy_factory,
         interval_seconds=scrapper_settings.scheduler_interval_seconds,
         batch_size=scrapper_settings.batch_size,
         worker_count=scrapper_settings.worker_count,
@@ -218,6 +243,10 @@ async def default_lifespan(application: FastAPI) -> AsyncIterator[None]:  # noqa
     task.cancel()
     if kafka_producer is not None:
         await kafka_producer.stop()
+    await browser_context.close()
+    await browser.close()
+    await pw.stop()
+    logger.info("Playwright browser context closed")
     await redis_client.aclose()
     await tg_client.disconnect()
     logger.info("Scrapper stopped")
