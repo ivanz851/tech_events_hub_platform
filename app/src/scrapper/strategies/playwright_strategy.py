@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from bs4 import BeautifulSoup
@@ -28,31 +27,26 @@ class PlaywrightScrapperStrategy(AbstractScrapperStrategy):
         page = await self._context.new_page()
         try:
             response = await page.goto(url, timeout=self._timeout_ms, wait_until="domcontentloaded")
-            if response is None or not response.ok:
-                status = response.status if response is not None else 0
-                raise LinkValidationError(url, f"HTTP {status}")
-        except LinkValidationError:
-            raise
         except Exception as exc:
             raise LinkValidationError(url, str(exc)) from exc
         finally:
             await page.close()
+        if response is None or not response.ok:
+            status = response.status if response is not None else 0
+            raise LinkValidationError(url, f"HTTP {status}")
 
     async def fetch_content(self, url: str) -> str:
         page = await self._context.new_page()
         try:
             response = await page.goto(url, timeout=self._timeout_ms, wait_until="networkidle")
-            if response is None or not response.ok:
-                status = response.status if response is not None else 0
-                raise LinkValidationError(url, f"HTTP {status}")
             html = await page.content()
-        except LinkValidationError:
-            raise
         except Exception as exc:
             raise LinkValidationError(url, str(exc)) from exc
         finally:
             await page.close()
-
+        if response is None or not response.ok:
+            status = response.status if response is not None else 0
+            raise LinkValidationError(url, f"HTTP {status}")
         soup = BeautifulSoup(html, "html.parser")
         for tag in soup(["script", "style"]):
             tag.decompose()

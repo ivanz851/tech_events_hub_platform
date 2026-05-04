@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from src.scrapper.strategies.abstract import LinkValidationError
 from src.scrapper.strategies.playwright_strategy import PlaywrightScrapperStrategy
